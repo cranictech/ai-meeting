@@ -1,0 +1,16 @@
+node_modules
+dist
+.next
+.turbo
+.env
+.env.local
+apps/api/.env
+apps/web/.env.local
+*.log
+.DS_Store
+coverage
+build
+uploads
+apps/api/uploads/
+.expo/
+.expo-shared/
