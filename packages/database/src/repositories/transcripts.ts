@@ -41,10 +41,29 @@ export class TranscriptRepository {
     return result;
   }
 
+  async findByMeetingId(meetingId: string): Promise<Transcript | null> {
+    return this.db.queryOne<Transcript>(
+      'SELECT * FROM transcripts WHERE meeting_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [meetingId]
+    );
+  }
+
   async getSegments(transcriptId: string): Promise<TranscriptSegment[]> {
     return this.db.query<TranscriptSegment>(
       'SELECT * FROM transcript_segments WHERE transcript_id = $1 ORDER BY segment_index ASC',
       [transcriptId]
+    );
+  }
+
+  async getSegmentsByMeetingId(meetingId: string): Promise<TranscriptSegment[]> {
+    return this.db.query<TranscriptSegment>(
+      `SELECT ts.*, s.display_name as speaker_name, s.speaker_label 
+       FROM transcript_segments ts 
+       JOIN transcripts t ON ts.transcript_id = t.id 
+       LEFT JOIN speakers s ON ts.speaker_id = s.id 
+       WHERE t.meeting_id = $1 
+       ORDER BY ts.start_time ASC, ts.segment_index ASC`,
+      [meetingId]
     );
   }
 

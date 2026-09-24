@@ -24,7 +24,7 @@ export default function NewMeetingPage() {
     }
 
     try {
-      const response = await meetingsApi.create(title, meetingType);
+      const response = await meetingsApi.create(title, meetingType, outputLanguage);
       router.push(`/dashboard/meetings/${response.data.id}/record`);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create meeting');

@@ -45,9 +45,9 @@ export default function SettingsPage() {
         dateFormat: profileData.date_format || 'YYYY-MM-DD',
         timeFormat: profileData.time_format || '24h',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load profile:', error);
-      if (error.response?.status === 401) {
+      if (error?.response?.status === 401) {
         localStorage.removeItem('auth_token');
         router.push('/login');
       }
@@ -96,16 +96,34 @@ export default function SettingsPage() {
       <nav className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <Link href="/dashboard" className="text-2xl font-bold">
+            <Link href="/dashboard" className="text-xl font-bold text-gray-900 tracking-tight">
               Meeting AI
             </Link>
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
-                Dashboard
+            <div className="flex items-center gap-6">
+              <Link href="/dashboard" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Home
               </Link>
-              <Link href="/dashboard/settings" className="text-gray-700 hover:text-gray-900 font-semibold">
+              <Link href="/dashboard/meetings" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Meetings
+              </Link>
+              <Link href="/dashboard/tasks" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Tasks
+              </Link>
+              <Link href="/dashboard/search" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Search
+              </Link>
+              <Link href="/dashboard/settings" className="text-sm font-semibold text-blue-600 transition">
                 Settings
               </Link>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('auth_token');
+                  router.push('/login');
+                }}
+                className="text-sm font-medium text-gray-500 hover:text-red-600 transition"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>

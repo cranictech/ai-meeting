@@ -9,9 +9,18 @@ const transcriptRepo = new TranscriptRepository(db);
 
 router.use(authenticate);
 
+router.get('/meeting/:meetingId', async (req: AuthRequest, res, next) => {
+  try {
+    const transcript = await transcriptRepo.findByMeetingId(req.params.meetingId);
+    res.json(transcript || {});
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/meeting/:meetingId/segments', async (req: AuthRequest, res, next) => {
   try {
-    const segments = await transcriptRepo.getSegments(req.params.meetingId);
+    const segments = await transcriptRepo.getSegmentsByMeetingId(req.params.meetingId);
     res.json(segments);
   } catch (error) {
     next(error);

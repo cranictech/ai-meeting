@@ -1,90 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Audio } from 'expo-av';
+import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RecordScreen() {
   const router = useRouter();
   const [recording, setRecording] = useState(false);
-  const [paused, setPaused] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [audioPermission, setAudioPermission] = useState<boolean | null>(null);
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    requestAudioPermission();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync();
-      }
-    };
-  }, []);
-
-  const requestAudioPermission = async () => {
-    const { status } = await Audio.requestPermissionsAsync();
-    setAudioPermission(status === 'granted');
+  const handleStart = () => {
+    setRecording(true);
   };
 
-  const startRecording = async () => {
-    try {
-      if (!audioPermission) {
-        await requestAudioPermission();
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      
-      recordingRef.current = recording;
-      await recording.startAsync();
-      setRecording(true);
-      setPaused(false);
-
-      timerRef.current = setInterval(() => {
-        setDuration(prev => prev + 1);
-      }, 1000);
-
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-    }
-  };
-
-  const pauseRecording = async () => {
-    if (recordingRef.current) {
-      await recordingRef.current.pauseAsync();
-      setPaused(true);
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-  };
-
-  const resumeRecording = async () => {
-    if (recordingRef.current) {
-      await recordingRef.current.startAsync();
-      setPaused(false);
-      timerRef.current = setInterval(() => {
-        setDuration(prev => prev + 1);
-      }, 1000);
-    }
-  };
-
-  const stopRecording = async () => {
-    if (recordingRef.current) {
-      await recordingRef.current.stopAndUnloadAsync();
-      setRecording(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-      
-      // Navigate to meeting details
-      router.back();
-    }
+  const handleStop = () => {
+    setRecording(false);
+    router.back();
   };
 
   const formatDuration = (seconds: number) => {
@@ -103,54 +33,30 @@ export default function RecordScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content}>
+      <View style={styles.content}>
         <View style={styles.recordingContainer}>
           <Text style={styles.duration}>{formatDuration(duration)}</Text>
           <Text style={styles.status}>
-            {recording ? (paused ? 'Paused' : 'Recording') : 'Ready to record'}
+            {recording ? 'Recording' : 'Ready to record'}
           </Text>
         </View>
 
         {!recording ? (
           <TouchableOpacity
             style={styles.recordButton}
-            onPress={startRecording}
+            onPress={handleStart}
           >
             <Text style={styles.recordButtonText}>Start Recording</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.controlsContainer}>
-            {paused ? (
-              <TouchableOpacity
-                style={[styles.controlButton, styles.resumeButton]}
-                onPress={resumeRecording}
-              >
-                <Text style={styles.controlButtonText}>Resume</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.controlButton, styles.pauseButton]}
-                onPress={pauseRecording}
-              >
-                <Text style={styles.controlButtonText}>Pause</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.controlButton, styles.stopButton]}
-              onPress={stopRecording}
-            >
-              <Text style={styles.controlButtonText}>Stop</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.stopButton}
+            onPress={handleStop}
+          >
+            <Text style={styles.stopButtonText}>Stop Recording</Text>
+          </TouchableOpacity>
         )}
-
-        {recording && (
-          <View style={styles.recordingIndicator}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>Recording in progress</Text>
-          </View>
-        )}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -214,45 +120,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  controlsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  controlButton: {
-    flex: 1,
+  stopButton: {
+    backgroundColor: '#6b7280',
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
   },
-  pauseButton: {
-    backgroundColor: '#f59e0b',
-  },
-  resumeButton: {
-    backgroundColor: '#10b981',
-  },
-  stopButton: {
-    backgroundColor: '#6b7280',
-  },
-  controlButtonText: {
+  stopButtonText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-  },
-  recordingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 20,
-  },
-  recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#dc2626',
-  },
-  recordingText: {
-    fontSize: 14,
-    color: '#6b7280',
   },
 });

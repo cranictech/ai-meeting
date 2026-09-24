@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { meetingsApi, actionItemsApi, authApi, type Meeting, type ActionItem, type UserProfileResponse } from '@/lib/api';
+import {
+  meetingsApi,
+  actionItemsApi,
+  authApi,
+  type Meeting,
+  type ActionItem,
+  type UserProfileResponse,
+} from '@/lib/api';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -11,9 +18,11 @@ export default function DashboardPage() {
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
       router.push('/login');
       return;
@@ -26,30 +35,52 @@ export default function DashboardPage() {
     try {
       const [meetingsRes, actionsRes, profileRes] = await Promise.all([
         meetingsApi.list(),
-        actionItemsApi.getUserItems('pending'),
+        actionItemsApi.getUserItems('pending').catch(() => ({ data: [] })),
         authApi.getProfile(),
       ]);
       setMeetings(meetingsRes.data);
-      setActionItems(actionsRes.data);
+      setActionItems(actionsRes.data || []);
       setUserProfile(profileRes.data);
 
-      // Check if user has completed onboarding
       if (!profileRes.data.profile.full_name) {
         router.push('/onboarding');
         return;
       }
-
-      // TODO: Check if user has completed permissions
-      // For now, redirect to permissions if not completed
-      // router.push('/permissions');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load data:', error);
-      if (error.response?.status === 401) {
+      if (error?.response?.status === 401) {
         localStorage.removeItem('auth_token');
         router.push('/login');
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      loadData();
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const res = await meetingsApi.search(searchQuery.trim());
+      setMeetings(res.data);
+    } catch (err) {
+      console.error('Search error:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleToggleTask = async (item: ActionItem) => {
+    try {
+      await actionItemsApi.updateStatus(item.id, 'completed');
+      setActionItems((prev) => prev.filter((a) => a.id !== item.id));
+    } catch (err) {
+      console.error('Failed to mark task complete:', err);
     }
   };
 
@@ -64,33 +95,42 @@ export default function DashboardPage() {
     }
   };
 
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    return `${mins}m`;
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600 font-medium">Loading dashboard...</div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b">
+      <nav className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <h1 className="text-2xl font-bold">Meeting AI</h1>
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard/meetings" className="text-gray-700 hover:text-gray-900">
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Meeting AI</h1>
+            <div className="flex items-center gap-6">
+              <Link href="/dashboard/meetings" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Meetings
               </Link>
-              <Link href="/dashboard/tasks" className="text-gray-700 hover:text-gray-900">
+              <Link href="/dashboard/tasks" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Tasks
               </Link>
-              <Link href="/dashboard/settings" className="text-gray-700 hover:text-gray-900">
+              <Link href="/dashboard/search" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Search
+              </Link>
+              <Link href="/dashboard/settings" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Settings
               </Link>
               <button
                 onClick={handleLogout}
-                className="text-gray-700 hover:text-gray-900"
+                className="text-sm font-medium text-gray-500 hover:text-red-600 transition"
               >
                 Logout
               </button>
@@ -99,47 +139,84 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">
-            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {userProfile?.profile?.full_name || 'there'}
-          </h2>
-          <p className="text-gray-600">Ready to capture your next meeting?</p>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Welcome Banner */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {userProfile?.profile?.full_name || 'there'}
+            </h2>
+            <p className="text-gray-600 text-sm mt-1">Ready to record and analyze your next meeting?</p>
+          </div>
+
+          <Link
+            href="/dashboard/meetings/new"
+            className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition font-semibold text-sm shadow-sm"
+          >
+            Start New Meeting
+          </Link>
         </div>
 
-        <Link
-          href="/dashboard/meetings/new"
-          className="block bg-blue-600 text-white text-center py-6 rounded-xl mb-8 hover:bg-blue-700 transition font-semibold text-lg"
-        >
-          Start New Meeting
-        </Link>
+        {/* Global Search Bar */}
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search meetings, transcript text, decisions, or action items..."
+            className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          />
+          <button
+            type="submit"
+            disabled={isSearching}
+            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium text-sm hover:bg-black transition disabled:opacity-50"
+          >
+            {isSearching ? 'Searching...' : 'Search'}
+          </button>
+        </form>
 
         <div className="grid md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Recent Meetings</h3>
+          {/* Recent Meetings */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Recent Meetings</h3>
+              <Link href="/dashboard/meetings" className="text-xs font-semibold text-blue-600 hover:underline">
+                View all ({meetings.length})
+              </Link>
+            </div>
+
             {meetings.length === 0 ? (
-              <div className="bg-white border rounded-lg p-6 text-center text-gray-500">
-                No meetings yet. Start your first recording!
+              <div className="bg-white border rounded-xl p-8 text-center text-gray-500 text-sm shadow-sm">
+                No meetings found. Start a new meeting to generate notes.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {meetings.slice(0, 5).map((meeting) => (
                   <Link
                     key={meeting.id}
                     href={`/dashboard/meetings/${meeting.id}`}
-                    className="block bg-white border rounded-lg p-4 hover:border-blue-500 transition"
+                    className="block bg-white border rounded-xl p-4 hover:border-blue-400 hover:shadow-sm transition"
                   >
-                    <h4 className="font-semibold">{meeting.title}</h4>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                      <span className="capitalize">{meeting.status}</span>
-                      <span>
-                        {new Date(meeting.created_at).toLocaleDateString()}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-3">
+                        <h4 className="font-semibold text-gray-900 truncate">{meeting.title}</h4>
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+                          <span>{new Date(meeting.created_at).toLocaleDateString()}</span>
+                          {meeting.duration_seconds && <span>{formatDuration(meeting.duration_seconds)}</span>}
+                          <span className="capitalize">{meeting.meeting_type || 'General'}</span>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-0.5 text-xs font-semibold rounded-full uppercase tracking-wider ${
+                        meeting.status === 'completed'
+                          ? 'bg-green-100 text-green-700'
+                          : meeting.status === 'processing'
+                          ? 'bg-amber-100 text-amber-700'
+                          : meeting.status === 'recording'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {meeting.status}
                       </span>
-                      {meeting.duration_seconds && (
-                        <span>
-                          {Math.floor(meeting.duration_seconds / 60)} minutes
-                        </span>
-                      )}
                     </div>
                   </Link>
                 ))}
@@ -147,43 +224,48 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Pending Action Items</h3>
+          {/* Pending Action Items */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Pending Action Items</h3>
+              <Link href="/dashboard/tasks" className="text-xs font-semibold text-blue-600 hover:underline">
+                View tasks ({actionItems.length})
+              </Link>
+            </div>
+
             {actionItems.length === 0 ? (
-              <div className="bg-white border rounded-lg p-6 text-center text-gray-500">
-                No pending tasks
+              <div className="bg-white border rounded-xl p-8 text-center text-gray-500 text-sm shadow-sm">
+                All tasks are up to date.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {actionItems.slice(0, 5).map((item) => (
                   <div
                     key={item.id}
-                    className="bg-white border rounded-lg p-4"
+                    className="bg-white border rounded-xl p-4 flex items-start gap-3 shadow-sm hover:border-gray-300 transition"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.task}</p>
-                        {item.assignee && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            Assigned to: {item.assignee}
-                          </p>
-                        )}
-                        {item.due_date && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            Due: {new Date(item.due_date).toLocaleDateString()}
-                          </p>
-                        )}
+                    <input
+                      type="checkbox"
+                      onChange={() => handleToggleTask(item)}
+                      className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                      title="Mark as complete"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{item.task}</p>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
+                        {item.assignee && <span>Assignee: <strong className="text-gray-700">{item.assignee}</strong></span>}
+                        {item.due_date && <span>Due: <strong className="text-gray-700">{new Date(item.due_date).toLocaleDateString()}</strong></span>}
                       </div>
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        item.priority === 'high'
-                          ? 'bg-red-100 text-red-700'
-                          : item.priority === 'medium'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {item.priority}
-                      </span>
                     </div>
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded uppercase tracking-wider ${
+                      item.priority === 'high'
+                        ? 'bg-red-100 text-red-700'
+                        : item.priority === 'medium'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {item.priority}
+                    </span>
                   </div>
                 ))}
               </div>

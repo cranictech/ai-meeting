@@ -14,3 +14,4 @@ uploads
 apps/api/uploads/
 .expo/
 .expo-shared/
+*.tsbuildinfo

@@ -5,9 +5,11 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -44,19 +46,70 @@ export interface UserProfileResponse {
 
 export interface Meeting {
   id: string;
+  user_id?: string;
   title: string;
-  status: string;
-  created_at: string;
+  meeting_type?: string;
+  status: 'draft' | 'recording' | 'processing' | 'completed' | 'failed' | 'archived';
+  recording_quality?: string;
+  detected_languages?: string[];
+  output_language?: string;
   duration_seconds?: number;
+  started_at?: string;
+  ended_at?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface ActionItem {
   id: string;
+  meeting_id: string;
+  meeting_title?: string;
   task: string;
   assignee?: string;
   due_date?: string;
-  status: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
   priority: string;
+  confidence?: string;
+  created_at?: string;
+}
+
+export interface MeetingSummary {
+  id?: string;
+  meeting_id?: string;
+  summary?: string;
+  executive_summary?: string;
+  created_at?: string;
+}
+
+export interface MeetingDecision {
+  id: string;
+  meeting_id: string;
+  decision: string;
+  source_timestamp?: number;
+  confidence?: string;
+  created_at?: string;
+}
+
+export interface TranscriptSegment {
+  id: string;
+  transcript_id?: string;
+  segment_index: number;
+  speaker_id?: string;
+  speaker_name?: string;
+  speaker_label?: string;
+  start_time: number;
+  end_time: number;
+  text: string;
+  language?: string;
+  translated_text?: string;
+  confidence?: number;
+}
+
+export interface Speaker {
+  id: string;
+  meeting_id: string;
+  speaker_label: string;
+  display_name?: string;
 }
 
 export const authApi = {
@@ -69,7 +122,6 @@ export const authApi = {
   getProfile: () => api.get<UserProfileResponse>('/auth/me'),
 
   updateProfile: (data: Partial<Profile>) => {
-    // Convert camelCase to snake_case for API
     const apiData: any = {};
     if (data.full_name !== undefined) apiData.full_name = data.full_name;
     if (data.country !== undefined) apiData.country = data.country;
@@ -100,16 +152,43 @@ export const oauthApi = {
 };
 
 export const meetingsApi = {
-  create: (title: string, meetingType?: string) =>
-    api.post<Meeting>('/meetings', { title, meetingType }),
+  create: (title: string, meetingType?: string, outputLanguage?: string) =>
+    api.post<Meeting>('/meetings', { title, meetingType, outputLanguage }),
 
   list: () => api.get<Meeting[]>('/meetings'),
 
+  search: (query: string) =>
+    api.get<Meeting[]>('/meetings/search', { params: { q: query } }),
+
   get: (id: string) => api.get<Meeting>(`/meetings/${id}`),
+
+  update: (id: string, data: Partial<Meeting>) =>
+    api.patch<Meeting>(`/meetings/${id}`, data),
 
   start: (id: string) => api.post(`/meetings/${id}/start`),
 
   stop: (id: string) => api.post(`/meetings/${id}/stop`),
+
+  process: (id: string) => api.post(`/meetings/${id}/process`),
+
+  delete: (id: string) => api.delete(`/meetings/${id}`),
+
+  getSummary: (id: string) =>
+    api.get<MeetingSummary>(`/meetings/${id}/summary`),
+
+  getDecisions: (id: string) =>
+    api.get<MeetingDecision[]>(`/meetings/${id}/decisions`),
+};
+
+export const transcriptsApi = {
+  getSegments: (meetingId: string) =>
+    api.get<TranscriptSegment[]>(`/transcripts/meeting/${meetingId}/segments`),
+
+  getSpeakers: (meetingId: string) =>
+    api.get<Speaker[]>(`/transcripts/meeting/${meetingId}/speakers`),
+
+  updateSpeaker: (speakerId: string, displayName: string) =>
+    api.patch(`/transcripts/speakers/${speakerId}`, { displayName }),
 };
 
 export const actionItemsApi = {
@@ -119,8 +198,17 @@ export const actionItemsApi = {
   getUserItems: (status?: string) =>
     api.get<ActionItem[]>('/action-items/user', { params: { status } }),
 
+  create: (data: { meetingId: string; task: string; assignee?: string; dueDate?: string; priority?: string }) =>
+    api.post<ActionItem>('/action-items', data),
+
+  update: (id: string, data: Partial<{ task: string; assignee: string; dueDate: string | null; priority: string; status: string }>) =>
+    api.patch<ActionItem>(`/action-items/${id}`, data),
+
   updateStatus: (id: string, status: string) =>
     api.patch(`/action-items/${id}/status`, { status }),
+
+  delete: (id: string) =>
+    api.delete(`/action-items/${id}`),
 };
 
 export default api;

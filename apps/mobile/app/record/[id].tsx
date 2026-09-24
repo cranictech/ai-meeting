@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
-import api from '../lib/api';
+import api from '../../lib/api';
 
 export default function RecordScreen() {
   const params = useLocalSearchParams();

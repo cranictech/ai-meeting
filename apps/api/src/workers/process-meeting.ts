@@ -1,5 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import * as path from 'path';
+import * as fs from 'fs';
 import { config } from '../config';
 import { Database, MeetingRepository, TranscriptRepository, ActionItemRepository } from '@meeting-ai/database';
 import { TranscriptionService } from '../services/transcription';
@@ -9,28 +11,29 @@ import { NotificationService } from '../services/notification';
 let connection: IORedis | null = null;
 
 if (config.redis.enabled) {
-  if (config.redis.url && config.redis.token) {
-    // For Upstash Redis, we need to use the REST URL format
-    connection = new IORedis(config.redis.url, {
-      maxRetriesPerRequest: null,
-      retryStrategy: () => null,
-      lazyConnect: true,
-    });
-  } else {
-    // Standard Redis connection
-    connection = new IORedis({
-      host: config.redis.host,
-      port: config.redis.port,
-      maxRetriesPerRequest: null,
-      retryStrategy: () => null,
-      lazyConnect: true,
-    });
+  try {
+    if (config.redis.url && config.redis.token) {
+      connection = new IORedis(config.redis.url, {
+        maxRetriesPerRequest: null,
+        retryStrategy: () => null,
+        lazyConnect: true,
+      });
+    } else {
+      connection = new IORedis({
+        host: config.redis.host,
+        port: config.redis.port,
+        maxRetriesPerRequest: null,
+        retryStrategy: () => null,
+        lazyConnect: true,
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to initialize Redis connection, running in direct async mode:', err);
+    connection = null;
   }
 }
 
-export const meetingQueue = new Queue('meeting-processing', { 
-  connection: connection as any || undefined 
-});
+export const meetingQueue = connection ? new Queue('meeting-processing', { connection }) : null;
 
 const db = new Database(config.database);
 const meetingRepo = new MeetingRepository(db);
@@ -44,113 +47,216 @@ interface MeetingJob {
   meetingId: string;
 }
 
-let meetingWorker: Worker<MeetingJob> | null = null;
+export async function processMeeting(meetingId: string): Promise<void> {
+  console.log(`Processing meeting ${meetingId}`);
 
-if (config.redis.enabled && connection) {
-  meetingWorker = new Worker<MeetingJob>(
-  'meeting-processing',
-  async (job) => {
-    const { meetingId } = job.data;
+  try {
+    // 1. Get meeting
+    const meeting = await meetingRepo.findById(meetingId);
+    if (!meeting) throw new Error(`Meeting ${meetingId} not found`);
 
-    console.log(`Processing meeting ${meetingId}`);
+    await meetingRepo.updateStatus(meetingId, 'processing');
 
-    try {
-      // 1. Get meeting and audio chunks
-      const meeting = await meetingRepo.findById(meetingId);
-      if (!meeting) throw new Error('Meeting not found');
+    // 2. Locate audio file
+    const recording = await meetingRepo.getRecordingByMeetingId(meetingId);
+    let audioFilePath = '';
 
-      // 2. Transcribe audio
-      const transcript = await transcriptRepo.create(meetingId, config.ai.sttProvider);
-      await transcriptRepo.updateStatus(transcript.id, 'processing');
+    if (recording && recording.storage_path) {
+      const candidatePaths = [
+        recording.storage_path,
+        path.join(process.cwd(), 'uploads', recording.storage_path),
+        path.join(process.cwd(), recording.storage_path),
+      ];
 
-      // In production: download and merge chunks, then transcribe
-      const transcriptionResult = await transcriptionService.transcribe('path-to-merged-audio');
-
-      // 3. Save segments
-      for (let i = 0; i < transcriptionResult.segments.length; i++) {
-        const segment = transcriptionResult.segments[i];
-        await transcriptRepo.createSegment({
-          transcript_id: transcript.id,
-          segment_index: i,
-          start_time: segment.start,
-          end_time: segment.end,
-          text: segment.text,
-          language: transcriptionResult.language,
-          speaker_id: undefined,
-          confidence: undefined,
-        });
+      for (const p of candidatePaths) {
+        if (fs.existsSync(p)) {
+          audioFilePath = p;
+          break;
+        }
       }
+    }
 
-      await transcriptRepo.updateStatus(transcript.id, 'completed');
+    // 3. Transcribe audio
+    let transcript = await transcriptRepo.findByMeetingId(meetingId);
+    if (!transcript) {
+      transcript = await transcriptRepo.create(meetingId, config.ai.sttProvider);
+    }
+    await transcriptRepo.updateStatus(transcript.id, 'processing');
 
-      // 4. AI Analysis
-      const analysis = await aiService.analyzeMeeting(transcriptionResult.text);
+    const transcriptionResult = await transcriptionService.transcribe(audioFilePath, meeting.title);
 
-      // 5. Save summary
-      await actionItemRepo.createSummary(
+    // 4. Create speakers if needed
+    const existingSpeakers = await transcriptRepo.getSpeakers(meetingId);
+    const speakerMap: Record<string, string> = {};
+
+    for (const seg of transcriptionResult.segments) {
+      const label = seg.speaker || 'Speaker 1';
+      if (!speakerMap[label]) {
+        const found = existingSpeakers.find(s => s.speaker_label === label);
+        if (found) {
+          speakerMap[label] = found.id;
+        } else {
+          const newSpeaker = await transcriptRepo.createSpeaker(meetingId, label);
+          speakerMap[label] = newSpeaker.id;
+        }
+      }
+    }
+
+    // 5. Save segments
+    // Clean old segments if re-processing
+    await db.query('DELETE FROM transcript_segments WHERE transcript_id = $1', [transcript.id]);
+
+    for (let i = 0; i < transcriptionResult.segments.length; i++) {
+      const segment = transcriptionResult.segments[i];
+      await transcriptRepo.createSegment({
+        transcript_id: transcript.id,
+        segment_index: i,
+        start_time: segment.start,
+        end_time: segment.end,
+        text: segment.text,
+        language: transcriptionResult.language || 'en',
+        speaker_id: segment.speaker ? speakerMap[segment.speaker] : undefined,
+        confidence: 0.95,
+      });
+    }
+
+    await transcriptRepo.updateStatus(transcript.id, 'completed');
+
+    // 6. AI Analysis
+    const analysis = await aiService.analyzeMeeting(
+      transcriptionResult.text,
+      meeting.meeting_type,
+      meeting.title
+    );
+
+    // 7. Save summary
+    await actionItemRepo.createSummary(
+      meetingId,
+      analysis.summary,
+      analysis.executiveSummary
+    );
+
+    // 8. Save decisions
+    for (const decision of analysis.decisions) {
+      await actionItemRepo.createDecision(
         meetingId,
-        analysis.summary,
-        analysis.executiveSummary
+        decision.decision,
+        decision.timestamp
       );
+    }
 
-      // 6. Save decisions
-      for (const decision of analysis.decisions) {
-        await actionItemRepo.createDecision(
-          meetingId,
-          decision.decision,
-          decision.timestamp
-        );
-      }
+    // 9. Save action items
+    for (const item of analysis.actionItems) {
+      await actionItemRepo.create(meetingId, {
+        task: item.task,
+        assignee: item.assignee,
+        assignee_user_id: meeting.user_id,
+        due_date: item.dueDate ? new Date(item.dueDate) : undefined,
+        priority: item.priority,
+      });
+    }
 
-      // 7. Save action items
-      for (const item of analysis.actionItems) {
-        await actionItemRepo.create(meetingId, {
-          task: item.task,
-          assignee: item.assignee,
-          due_date: item.dueDate ? new Date(item.dueDate) : undefined,
-          priority: item.priority,
-        });
-      }
+    // 10. Update Search Index
+    try {
+      const combinedSearchText = [
+        meeting.title,
+        meeting.meeting_type,
+        analysis.summary,
+        analysis.executiveSummary,
+        analysis.decisions.map(d => d.decision).join(' '),
+        analysis.actionItems.map(a => a.task).join(' '),
+        transcriptionResult.text,
+      ].filter(Boolean).join(' ');
 
-      // 8. Update meeting status
-      await meetingRepo.updateStatus(meetingId, 'completed');
+      await db.query('DELETE FROM search_index WHERE meeting_id = $1', [meetingId]);
+      await db.query(
+        `INSERT INTO search_index (meeting_id, user_id, document)
+         VALUES ($1, $2, to_tsvector('english', $3))`,
+        [meetingId, meeting.user_id, combinedSearchText]
+      );
+    } catch (searchErr) {
+      console.warn('Failed to update search index:', searchErr);
+    }
 
-      // 9. Notify user
+    // 11. Update meeting status
+    await meetingRepo.updateStatus(meetingId, 'completed');
+
+    // 12. Notify user
+    try {
       await notificationService.notifyMeetingComplete(
         meeting.user_id,
         meetingId,
         meeting.title
       );
+    } catch (notifErr) {
+      // Ignore notification failure in development
+    }
 
-      console.log(`Meeting ${meetingId} processed successfully`);
-    } catch (error) {
-      console.error(`Failed to process meeting ${meetingId}:`, error);
-      await meetingRepo.updateStatus(meetingId, 'failed');
-      
-      // Notify user of failure
-      const meeting = await meetingRepo.findById(meetingId);
-      if (meeting) {
+    console.log(`Meeting ${meetingId} processed successfully`);
+  } catch (error) {
+    console.error(`Failed to process meeting ${meetingId}:`, error);
+    await meetingRepo.updateStatus(meetingId, 'failed');
+
+    const meeting = await meetingRepo.findById(meetingId);
+    if (meeting) {
+      try {
         await notificationService.notifyMeetingFailed(
           meeting.user_id,
           meetingId,
           meeting.title
         );
+      } catch (e) {
+        // ignore notification error
       }
-      
-      throw error;
     }
-  },
-  {
-    connection: connection as any || undefined,
-    concurrency: 3,
+
+    throw error;
   }
-  );
+}
 
-  meetingWorker.on('completed', (job) => {
-    console.log(`Job ${job.id} completed`);
-  });
+export async function queueMeeting(meetingId: string): Promise<void> {
+  if (meetingQueue) {
+    try {
+      await meetingQueue.add('process-meeting', { meetingId });
+      return;
+    } catch (err) {
+      console.warn('Failed to add job to queue, running directly:', err);
+    }
+  }
 
-  meetingWorker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err);
+  // Fallback to async direct execution
+  setImmediate(async () => {
+    try {
+      await processMeeting(meetingId);
+    } catch (err) {
+      console.error(`Background processing failed for meeting ${meetingId}:`, err);
+    }
   });
+}
+
+let meetingWorker: Worker<MeetingJob> | null = null;
+
+if (config.redis.enabled && connection) {
+  try {
+    meetingWorker = new Worker<MeetingJob>(
+      'meeting-processing',
+      async (job) => {
+        await processMeeting(job.data.meetingId);
+      },
+      {
+        connection,
+        concurrency: 3,
+      }
+    );
+
+    meetingWorker.on('completed', (job) => {
+      console.log(`Job ${job.id} completed`);
+    });
+
+    meetingWorker.on('failed', (job, err) => {
+      console.error(`Job ${job?.id} failed:`, err);
+    });
+  } catch (err) {
+    console.warn('Worker initialization skipped:', err);
+  }
 }

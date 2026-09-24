@@ -30,6 +30,7 @@ const updateProfileSchema = z.object({
   output_language: z.string().optional(),
   date_format: z.string().optional(),
   time_format: z.string().optional(),
+  use_case: z.string().optional(),
 });
 
 router.post('/register', async (req, res, next) => {
@@ -149,6 +150,7 @@ router.patch('/profile', authenticate, async (req: AuthRequest, res, next) => {
       if (data.output_language !== undefined) updateData.output_language = data.output_language;
       if (data.date_format !== undefined) updateData.date_format = data.date_format;
       if (data.time_format !== undefined) updateData.time_format = data.time_format;
+      if (data.use_case !== undefined) updateData.use_case = data.use_case;
 
       console.log('Update data:', updateData);
       await userRepo.updateProfile(req.userId!, updateData);

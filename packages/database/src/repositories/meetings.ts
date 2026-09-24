@@ -82,6 +82,68 @@ export class MeetingRepository {
     );
   }
 
+  async getRecordingByMeetingId(meetingId: string): Promise<Recording | null> {
+    return this.db.queryOne<Recording>(
+      'SELECT * FROM recordings WHERE meeting_id = $1 ORDER BY uploaded_at DESC LIMIT 1',
+      [meetingId]
+    );
+  }
+
+  async search(userId: string, term: string): Promise<Meeting[]> {
+    const pattern = `%${term}%`;
+    return this.db.query<Meeting>(
+      `SELECT DISTINCT m.* 
+       FROM meetings m
+       LEFT JOIN meeting_summaries ms ON m.id = ms.meeting_id
+       LEFT JOIN meeting_decisions md ON m.id = md.meeting_id
+       LEFT JOIN action_items ai ON m.id = ai.meeting_id
+       LEFT JOIN transcripts t ON m.id = t.meeting_id
+       LEFT JOIN transcript_segments ts ON t.id = ts.transcript_id
+       WHERE m.user_id = $1 AND (
+         m.title ILIKE $2 OR
+         m.meeting_type ILIKE $2 OR
+         ms.summary ILIKE $2 OR
+         ms.executive_summary ILIKE $2 OR
+         md.decision ILIKE $2 OR
+         ai.task ILIKE $2 OR
+         ts.text ILIKE $2
+       )
+       ORDER BY m.created_at DESC LIMIT 50`,
+      [userId, pattern]
+    );
+  }
+
+  async update(id: string, data: Partial<Meeting>): Promise<Meeting> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (data.title !== undefined) {
+      fields.push(`title = $${idx++}`);
+      values.push(data.title);
+    }
+    if (data.meeting_type !== undefined) {
+      fields.push(`meeting_type = $${idx++}`);
+      values.push(data.meeting_type);
+    }
+    if (data.output_language !== undefined) {
+      fields.push(`output_language = $${idx++}`);
+      values.push(data.output_language);
+    }
+    if (data.duration_seconds !== undefined) {
+      fields.push(`duration_seconds = $${idx++}`);
+      values.push(data.duration_seconds);
+    }
+
+    fields.push(`updated_at = NOW()`);
+    values.push(id);
+
+    const query = `UPDATE meetings SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`;
+    const result = await this.db.queryOne<Meeting>(query, values);
+    if (!result) throw new Error('Meeting not found');
+    return result;
+  }
+
   async delete(id: string): Promise<void> {
     await this.db.query('DELETE FROM meetings WHERE id = $1', [id]);
   }

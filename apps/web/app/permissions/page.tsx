@@ -101,10 +101,10 @@ export default function PermissionsPage() {
               </p>
               <div className="text-sm text-gray-500 mb-4">
                 {microphonePermission === 'granted' && (
-                  <span className="text-green-600">✓ Permission granted</span>
+                  <span className="text-green-600">Permission granted</span>
                 )}
                 {microphonePermission === 'denied' && (
-                  <span className="text-red-600">✗ Permission denied. Please enable in browser settings.</span>
+                  <span className="text-red-600">Permission denied. Please enable in browser settings.</span>
                 )}
                 {microphonePermission === 'prompt' && (
                   <span>Click below to request permission</span>
@@ -145,10 +145,10 @@ export default function PermissionsPage() {
               </p>
               <div className="text-sm text-gray-500 mb-4">
                 {notificationPermission === 'granted' && (
-                  <span className="text-green-600">✓ Permission granted</span>
+                  <span className="text-green-600">Permission granted</span>
                 )}
                 {notificationPermission === 'denied' && (
-                  <span className="text-red-600">✗ Permission denied. Please enable in browser settings.</span>
+                  <span className="text-red-600">Permission denied. Please enable in browser settings.</span>
                 )}
                 {notificationPermission === 'prompt' && (
                   <span>Click below to request permission</span>

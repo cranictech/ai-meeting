@@ -75,7 +75,7 @@ export default function OnboardingPage() {
             Welcome to Meeting AI
           </h1>
           <p className="text-gray-600">
-            {step === 1 ? 'Let's get you set up' : 'Almost there!'}
+            {step === 1 ? "Let's get you set up" : 'Almost there!'}
           </p>
         </div>
 
