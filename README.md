@@ -30,11 +30,11 @@ An AI-powered meeting notes platform with real-time transcription, summary gener
 - Axios for API calls
 
 ### Mobile App
-- Expo 51
-- React Native
+- Expo 57
+- React Native 0.86
 - Expo Router for navigation
 - Expo Audio for recording
-- AsyncStorage for token management
+- AsyncStorage for token and server configuration management
 
 ## Getting Started
 
@@ -75,15 +75,17 @@ npm run build
 # Or individually
 cd apps/api && npm run dev
 cd apps/web && npm run dev
-cd apps/mobile && npx expo start --lan
+cd apps/mobile && npx expo start --tunnel
 ```
 
 ### Mobile App Setup
 
-1. Download Expo Go from your app store
-2. Start the mobile dev server: `cd apps/mobile && npx expo start --lan`
-3. Scan the QR code with Expo Go
-4. Update the API URL in `apps/mobile/lib/api.ts` to your local IP
+1. Download Expo Go from your app store (SDK 57 compatible)
+2. Start the mobile dev server:
+   - Same Wi-Fi: `cd apps/mobile && npx expo start --lan`
+   - Different network / Cellular: `cd apps/mobile && npx expo start --tunnel`
+3. Scan the QR code with Expo Go (Camera app on iOS, Expo Go app on Android)
+4. The mobile app includes a built-in "Server Settings" configuration on the Login, Register, and Settings screens to easily point to your backend API URL.
 
 ## Environment Variables
 
