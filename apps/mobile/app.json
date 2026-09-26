@@ -3,9 +3,12 @@
     "name": "Meeting AI",
     "slug": "meeting-ai",
     "version": "1.0.0",
+    "sdkVersion": "57.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "scheme": "meeting-ai",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -34,6 +37,9 @@
     },
     "extra": {
       "apiUrl": "http://192.168.3.136:3000"
-    }
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }

@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { authApi, type UserProfileResponse } from '../../lib/api';
+import { authApi, getActiveApiUrl, setCustomApiUrl, DEFAULT_API_URL, type UserProfileResponse } from '../../lib/api';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -29,6 +29,7 @@ export default function SettingsScreen() {
   const [country, setCountry] = useState('');
   const [timezone, setTimezone] = useState('');
   const [outputLanguage, setOutputLanguage] = useState('en');
+  const [serverUrl, setServerUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -38,6 +39,8 @@ export default function SettingsScreen() {
 
   const loadProfile = async () => {
     try {
+      const currentUrl = await getActiveApiUrl();
+      setServerUrl(currentUrl);
       const res = await authApi.getProfile();
       setProfileData(res.data);
       setFullName(res.data.profile.full_name || '');
@@ -54,13 +57,14 @@ export default function SettingsScreen() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      await setCustomApiUrl(serverUrl);
       await authApi.updateProfile({
         full_name: fullName,
         country,
         timezone,
         output_language: outputLanguage,
       });
-      Alert.alert('Saved', 'Your settings have been updated successfully.');
+      Alert.alert('Saved', 'Your settings and server URL have been updated successfully.');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.error || 'Failed to save settings');
     } finally {
@@ -141,6 +145,31 @@ export default function SettingsScreen() {
             placeholderTextColor="#9ca3af"
           />
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionHeader}>Server Connection</Text>
+        <Text style={styles.sublabel}>Backend API endpoint for cross-network access</Text>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>API Base URL</Text>
+          <TextInput
+            style={styles.input}
+            value={serverUrl}
+            onChangeText={setServerUrl}
+            placeholder="http://192.168.x.x:3000 or https://..."
+            placeholderTextColor="#9ca3af"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={() => setServerUrl(DEFAULT_API_URL)}
+        >
+          <Text style={styles.resetButtonText}>Reset to Default ({DEFAULT_API_URL})</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
@@ -332,5 +361,17 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontSize: 15,
     fontWeight: '600',
+  },
+  resetButton: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#f3f4f6',
+  },
+  resetButtonText: {
+    fontSize: 12,
+    color: '#4b5563',
   },
 });

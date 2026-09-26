@@ -2,14 +2,31 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://192.168.3.136:3000';
+export const DEFAULT_API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://192.168.3.136:3000';
+
+export async function getActiveApiUrl(): Promise<string> {
+  const customUrl = await AsyncStorage.getItem('custom_api_url');
+  return customUrl || DEFAULT_API_URL;
+}
+
+export async function setCustomApiUrl(url: string): Promise<void> {
+  if (!url || url.trim() === '') {
+    await AsyncStorage.removeItem('custom_api_url');
+  } else {
+    await AsyncStorage.setItem('custom_api_url', url.trim().replace(/\/+$/, ''));
+  }
+}
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: DEFAULT_API_URL,
   timeout: 30000,
 });
 
 api.interceptors.request.use(async (config) => {
+  const customUrl = await AsyncStorage.getItem('custom_api_url');
+  if (customUrl) {
+    config.baseURL = customUrl.trim().replace(/\/+$/, '');
+  }
   const token = await AsyncStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

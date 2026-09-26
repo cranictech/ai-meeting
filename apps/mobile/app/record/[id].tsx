@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import api from '../../lib/api';
 
 export default function RecordScreen() {
@@ -16,13 +16,15 @@ export default function RecordScreen() {
   const [duration, setDuration] = useState(0);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const chunkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const chunkIndex = useRef(0);
 
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
       if (recording) {
-        recording.stopAndUnloadAsync();
+        recording.stopAndUnloadAsync().catch(() => {});
       }
     };
   }, [recording]);
@@ -54,7 +56,7 @@ export default function RecordScreen() {
       }, 1000);
 
       // Auto-save chunks every 10 seconds
-      setInterval(async () => {
+      chunkIntervalRef.current = setInterval(async () => {
         if (newRecording) {
           await saveChunk(newRecording);
         }
@@ -96,6 +98,7 @@ export default function RecordScreen() {
       await recording.pauseAsync();
       setIsPaused(true);
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
     }
   };
 
@@ -106,6 +109,11 @@ export default function RecordScreen() {
       intervalRef.current = setInterval(() => {
         setDuration((prev) => prev + 1);
       }, 1000);
+      chunkIntervalRef.current = setInterval(async () => {
+        if (recording) {
+          await saveChunk(recording);
+        }
+      }, 10000);
     }
   };
 
@@ -113,10 +121,11 @@ export default function RecordScreen() {
     if (!recording) return;
 
     try {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
+
       await recording.stopAndUnloadAsync();
       await saveChunk(recording);
-
-      if (intervalRef.current) clearInterval(intervalRef.current);
 
       await api.post(`/meetings/${meetingId}/stop`);
 
