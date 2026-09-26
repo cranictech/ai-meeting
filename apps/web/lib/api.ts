@@ -54,11 +54,13 @@ export interface Meeting {
   detected_languages?: string[];
   output_language?: string;
   duration_seconds?: number;
+  audio_url?: string;
   started_at?: string;
   ended_at?: string;
   created_at: string;
   updated_at?: string;
 }
+
 
 export interface ActionItem {
   id: string;
@@ -192,7 +194,22 @@ export const meetingsApi = {
 
   getDecisions: (id: string) =>
     api.get<MeetingDecision[]>(`/meetings/${id}/decisions`),
+
+  translate: (id: string, targetLanguage: string) =>
+    api.post<{
+      targetLanguage: string;
+      originalSummary: string;
+      translatedSummary: string;
+      translatedExecutiveSummary?: string;
+    }>(`/meetings/${id}/translate`, { targetLanguage }),
+
+  shareEmail: (id: string, data: { recipients: string[]; subject?: string; message?: string }) =>
+    api.post<{ success: boolean; recipients: string[]; meetingTitle: string; sentAt: string }>(
+      `/meetings/${id}/share/email`,
+      data
+    ),
 };
+
 
 export const transcriptsApi = {
   getSegments: (meetingId: string) =>

@@ -13,6 +13,15 @@ import {
   type TranscriptSegment,
 } from '@/lib/api';
 
+const TRANSLATION_LANGUAGES = [
+  { code: 'sw', label: 'Swahili' },
+  { code: 'lg', label: 'Luganda' },
+  { code: 'fr', label: 'French' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'de', label: 'German' },
+  { code: 'ar', label: 'Arabic' },
+];
+
 export default function MeetingDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
@@ -33,6 +42,30 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const [uploadError, setUploadError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Audio Player State
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+
+  // Translation State
+  const [selectedLang, setSelectedLang] = useState('sw');
+  const [translating, setTranslating] = useState(false);
+  const [translatedData, setTranslatedData] = useState<{
+    targetLanguage: string;
+    originalSummary: string;
+    translatedSummary: string;
+    translatedExecutiveSummary?: string;
+  } | null>(null);
+
+  // Email Share Modal State
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipients, setEmailRecipients] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState(false);
 
   useEffect(() => {
     loadAllMeetingData();
@@ -56,6 +89,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       setDecisions(decisionsRes.data || []);
       setActionItems(actionsRes.data || []);
       setSegments(segmentsRes.data || []);
+      setEmailSubject(`Meeting Notes: ${meetingRes.data.title}`);
     } catch (err: any) {
       setError('Failed to load meeting information');
       console.error('Error loading meeting data:', err);
@@ -87,6 +121,49 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       );
     } catch (err) {
       console.error('Failed to update task status:', err);
+    }
+  };
+
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const res = await meetingsApi.translate(params.id, selectedLang);
+      setTranslatedData(res.data);
+    } catch (err) {
+      alert('Translation failed. Please verify AI provider configuration.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const handleSendEmailShare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emails = emailRecipients
+      .split(/[\s,;]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes('@'));
+
+    if (emails.length === 0) {
+      alert('Please enter at least one valid recipient email address.');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      await meetingsApi.shareEmail(params.id, {
+        recipients: emails,
+        subject: emailSubject,
+      });
+      setEmailSuccess(true);
+      setTimeout(() => {
+        setShowEmailModal(false);
+        setEmailSuccess(false);
+        setEmailRecipients('');
+      }, 2000);
+    } catch (err) {
+      alert('Failed to send email notes.');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -169,17 +246,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   };
 
   const handlePrint = () => {
-    window.print();
-  };
-
-  const handleEmailShare = () => {
-    if (!meeting) return;
-    const subject = encodeURIComponent(`Meeting Notes: ${meeting.title}`);
-    const summaryText = summary?.executive_summary || summary?.summary || 'Meeting notes are ready.';
-    const body = encodeURIComponent(
-      `Hello,\n\nHere are the notes and action items from our meeting "${meeting.title}":\n\n${summaryText}\n\nView complete notes and recording at:\n${window.location.href}\n`
-    );
-    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    window.open(`/api/meetings/${params.id}/export/html`, '_blank');
   };
 
   const handleDelete = async () => {
@@ -237,6 +304,36 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleAudioUpload(file);
+  };
+
+  const handleSeek = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+      if (!isPlaying) {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackRate(speed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed;
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -302,16 +399,23 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 {copyNotification ? 'Copied' : 'Copy Notes'}
               </button>
 
+              <button
+                onClick={() => setShowEmailModal(true)}
+                className="px-3 py-1.5 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                Share by Email
+              </button>
+
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
                   className="px-3 py-1.5 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-1"
                 >
-                  Export & Share
+                  Export
                 </button>
 
                 {showExportMenu && (
-                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 text-sm">
+                  <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 text-sm">
                     <button
                       onClick={() => {
                         handleDownloadFile('md');
@@ -337,31 +441,16 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                       }}
                       className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
                     >
-                      Print / Save as PDF
-                    </button>
-                    <div className="border-t my-1"></div>
-                    <button
-                      onClick={() => {
-                        handleEmailShare();
-                        setShowExportMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
-                    >
-                      Email Notes Draft
+                      Printable Document (HTML / PDF)
                     </button>
                   </div>
                 )}
               </div>
 
               <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="px-3 py-1.5 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                {isEditing ? 'Cancel Edit' : 'Edit Info'}
-              </button>
-              <button
                 onClick={handleDelete}
-                className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition"
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                title="Delete Meeting"
               >
                 Delete
               </button>
@@ -370,67 +459,147 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Edit Form */}
-        {isEditing && (
-          <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-            <h2 className="text-base font-semibold text-gray-900">Edit Meeting Details</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Meeting Type</label>
-                <select
-                  value={editType}
-                  onChange={(e) => setEditType(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="business">Business Meeting</option>
-                  <option value="interview">Interview</option>
-                  <option value="class">Class</option>
-                  <option value="client">Client Meeting</option>
-                  <option value="church">Church Meeting</option>
-                  <option value="team">Team Meeting</option>
-                  <option value="personal">Personal Notes</option>
-                  <option value="research">Research</option>
-                </select>
-              </div>
+      {/* Email Share Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h2 className="text-base font-semibold text-gray-900">Share Meeting Notes</h2>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-sm font-medium"
+              >
+                Close
+              </button>
             </div>
-            <button
-              onClick={handleSaveEdit}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-            >
-              Save Changes
-            </button>
-          </div>
-        )}
 
-        {/* Overview Header Card */}
+            {emailSuccess ? (
+              <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-lg text-sm text-center">
+                Meeting notes sent successfully.
+              </div>
+            ) : (
+              <form onSubmit={handleSendEmailShare} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Recipient Emails (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="sarah@company.com, john@company.com"
+                    value={emailRecipients}
+                    onChange={(e) => setEmailRecipients(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Subject Line
+                  </label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailModal(false)}
+                    className="px-4 py-2 border rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sendingEmail}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {sendingEmail ? 'Sending...' : 'Send Notes'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Header Details Card */}
         <div className="bg-white border rounded-xl p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b">
-            <div>
-              <span className={`px-2.5 py-1 text-xs font-medium rounded-full uppercase tracking-wider ${
-                meeting.status === 'completed'
-                  ? 'bg-green-100 text-green-700'
-                  : meeting.status === 'processing'
-                  ? 'bg-amber-100 text-amber-700'
-                  : 'bg-gray-100 text-gray-700'
-              }`}>
-                {meeting.status}
-              </span>
+          <div className="flex flex-col md:flex-row justify-between gap-4 border-b pb-6">
+            <div className="space-y-2">
+              {isEditing ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="text-xl font-bold text-gray-900 border px-3 py-1.5 rounded-lg w-full max-w-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={editType}
+                      onChange={(e) => setEditType(e.target.value)}
+                      className="text-sm border px-3 py-1.5 rounded-lg text-gray-700 focus:outline-none"
+                    >
+                      <option value="business">Business Meeting</option>
+                      <option value="interview">Interview</option>
+                      <option value="standup">Standup</option>
+                      <option value="lecture">Lecture / Class</option>
+                      <option value="general">General</option>
+                    </select>
+                    <button
+                      onClick={handleSaveEdit}
+                      className="bg-blue-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="border text-gray-600 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-bold text-gray-900">{meeting.title}</h2>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="text-xs text-gray-400 hover:text-blue-600 font-medium border px-2 py-0.5 rounded"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className={`px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider ${
+                  meeting.status === 'completed'
+                    ? 'bg-green-100 text-green-800'
+                    : meeting.status === 'processing'
+                    ? 'bg-amber-100 text-amber-800'
+                    : meeting.status === 'recording'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {meeting.status}
+                </span>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-600 font-medium capitalize">
+                  {meeting.meeting_type || 'General'}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
               {meeting.status === 'completed' ? (
                 <button
-                  id="btn-record-again"
                   onClick={() => router.push(`/dashboard/meetings/${meeting.id}/record`)}
                   className="bg-blue-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-blue-700 transition"
                 >
@@ -438,7 +607,6 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 </button>
               ) : meeting.status === 'processing' ? (
                 <button
-                  id="btn-view-processing"
                   onClick={() => router.push(`/dashboard/meetings/${meeting.id}/processing`)}
                   className="bg-amber-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-amber-700 transition"
                 >
@@ -447,14 +615,12 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
               ) : (
                 <div className="flex items-center gap-2">
                   <button
-                    id="btn-start-recording"
                     onClick={() => router.push(`/dashboard/meetings/${meeting.id}/record`)}
                     className="bg-red-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-red-700 transition"
                   >
                     Start Recording
                   </button>
                   <button
-                    id="btn-upload-audio"
                     onClick={() => fileInputRef.current?.click()}
                     className="border border-gray-300 text-gray-700 text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-gray-50 transition"
                   >
@@ -485,6 +651,52 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
           </div>
         </div>
 
+        {/* Audio Player Card if audio exists */}
+        {meeting.audio_url && (
+          <div className="bg-white border rounded-xl p-4 shadow-sm space-y-2">
+            <audio
+              ref={audioRef}
+              src={meeting.audio_url}
+              onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+              onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
+              onEnded={() => setIsPlaying(false)}
+            />
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              <span className="font-semibold text-gray-900">Audio Recording Playback</span>
+              <span>{formatSeconds(currentTime)} / {formatSeconds(audioDuration || meeting.duration_seconds)}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={togglePlayPause}
+                className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition w-8 h-8 flex items-center justify-center text-xs font-bold"
+              >
+                {isPlaying ? '||' : '▶'}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={audioDuration || meeting.duration_seconds || 100}
+                value={currentTime}
+                onChange={(e) => handleSeek(Number(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex items-center gap-1">
+                {[1, 1.25, 1.5, 2].map((speed) => (
+                  <button
+                    key={speed}
+                    onClick={() => handleSpeedChange(speed)}
+                    className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                      playbackRate === speed ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-500 hover:bg-gray-100'
+                    }`}
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Audio Upload Panel — shown for draft / failed meetings */}
         {(meeting.status === 'draft' || meeting.status === 'failed') && (
           <div className="bg-white border rounded-xl p-6 shadow-sm">
@@ -513,7 +725,6 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
               </div>
             ) : (
               <div
-                id="upload-drop-zone"
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleFileDrop}
@@ -522,9 +733,6 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                   dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                <svg className="w-8 h-8 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16v-8m0 0l-3 3m3-3l3 3M20 16.5A3.5 3.5 0 0116.5 20h-9A3.5 3.5 0 014 16.5v-1A3.5 3.5 0 017.5 12H8" />
-                </svg>
                 <p className="text-sm font-medium text-gray-700 mb-1">Drag and drop audio here</p>
                 <p className="text-xs text-gray-400">or click to browse — MP3, WAV, M4A, WebM, OGG up to 200 MB</p>
               </div>
@@ -583,6 +791,57 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
         {/* Tab Contents */}
         {activeTab === 'notes' && (
           <div className="space-y-6">
+            {/* Translation Action Bar */}
+            <div className="bg-white border rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-gray-600">
+                <span className="font-semibold text-gray-900">Multilingual Translation:</span> Translate notes into local or international languages.
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedLang}
+                  onChange={(e) => setSelectedLang(e.target.value)}
+                  className="text-xs border rounded-lg px-2.5 py-1.5 text-gray-700 focus:outline-none"
+                >
+                  {TRANSLATION_LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleTranslate}
+                  disabled={translating}
+                  className="bg-blue-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+                >
+                  {translating ? 'Translating...' : 'Translate Notes'}
+                </button>
+              </div>
+            </div>
+
+            {translatedData && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                    Translated Notes ({translatedData.targetLanguage.toUpperCase()})
+                  </h4>
+                  <button
+                    onClick={() => setTranslatedData(null)}
+                    className="text-xs text-amber-700 hover:text-amber-900 font-medium"
+                  >
+                    Hide
+                  </button>
+                </div>
+                {translatedData.translatedExecutiveSummary && (
+                  <p className="text-amber-950 text-sm font-medium italic border-b border-amber-200 pb-2">
+                    {translatedData.translatedExecutiveSummary}
+                  </p>
+                )}
+                <p className="text-amber-950 text-sm leading-relaxed whitespace-pre-line">
+                  {translatedData.translatedSummary}
+                </p>
+              </div>
+            )}
+
             {summary?.executive_summary && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
                 <h3 className="text-xs font-bold text-blue-900 uppercase tracking-wider mb-2">
@@ -694,12 +953,16 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
             ) : (
               <div className="space-y-4">
                 {segments.map((seg) => (
-                  <div key={seg.id || seg.segment_index} className="border-b pb-4 last:border-b-0">
+                  <div
+                    key={seg.id || seg.segment_index}
+                    onClick={() => handleSeek(seg.start_time)}
+                    className="border-b pb-4 last:border-b-0 cursor-pointer hover:bg-blue-50/50 p-2 rounded transition"
+                  >
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span className="font-semibold text-blue-700">
                         {seg.speaker_name || seg.speaker_label || 'Speaker'}
                       </span>
-                      <span className="font-mono">
+                      <span className="font-mono text-blue-600 hover:underline">
                         {formatSeconds(seg.start_time)} - {formatSeconds(seg.end_time)}
                       </span>
                     </div>
