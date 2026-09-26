@@ -1,5 +1,12 @@
 #!/bin/bash
 
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+
+LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | head -n 1)
+if [ -z "$LOCAL_IP" ]; then
+  LOCAL_IP="localhost"
+fi
+
 echo "Starting Meeting AI development servers..."
 
 # Start API server
@@ -27,19 +34,16 @@ echo ""
 echo "=========================================="
 echo "Servers started successfully!"
 echo "=========================================="
-echo "API Server: http://localhost:3000"
+echo "API Server: http://$LOCAL_IP:3000"
 echo "Web Server: http://localhost:3001"
 echo "Mobile Expo: http://localhost:8081"
 echo ""
-echo "For mobile app on your phone:"
-echo "1. Download Expo Go app from your app store"
-echo "2. Scan the QR code displayed in the Expo terminal"
-echo "3. Your local IP: 192.168.0.102"
-echo ""
-echo "Press Ctrl+C to stop all servers"
+echo "For mobile app on iPhone and Android:"
+echo "1. Download Expo Go app from the App Store or Google Play"
+echo "2. Connect your phone to the same Wi-Fi network as this computer"
+echo "3. Scan the QR code displayed in the Expo terminal or open exp://$LOCAL_IP:8081"
 echo "=========================================="
 
-# Function to kill all processes on exit
 cleanup() {
     echo ""
     echo "Stopping all servers..."
@@ -49,8 +53,5 @@ cleanup() {
     exit
 }
 
-# Trap Ctrl+C
 trap cleanup INT
-
-# Wait for processes
 wait

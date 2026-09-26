@@ -4,16 +4,36 @@
     "slug": "meeting-ai",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.meetingai.app"
+      "bundleIdentifier": "com.meetingai.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Meeting AI requires microphone access to record and transcribe your meeting audio.",
+        "UIBackgroundModes": ["audio"]
+      }
     },
     "android": {
-      "package": "com.meetingai.app"
+      "package": "com.meetingai.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE"
+      ]
     },
     "web": {
       "bundler": "metro"
+    },
+    "extra": {
+      "apiUrl": "http://192.168.3.136:3000"
     }
   }
 }
