@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   meetingsApi,
@@ -28,6 +28,11 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const [editType, setEditType] = useState('business');
   const [copyNotification, setCopyNotification] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadAllMeetingData();
@@ -195,6 +200,43 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
     } catch (err) {
       alert('Failed to start processing');
     }
+  };
+
+  const handleAudioUpload = async (file: File) => {
+    const allowed = ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/x-m4a', 'audio/m4a', 'video/webm'];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const extAllowed = ['webm', 'mp4', 'mp3', 'ogg', 'wav', 'm4a'];
+    if (!allowed.includes(file.type) && !extAllowed.includes(ext || '')) {
+      setUploadError('Unsupported file type. Please upload .mp3, .wav, .m4a, .webm, or .ogg');
+      return;
+    }
+    if (file.size > 200 * 1024 * 1024) {
+      setUploadError('File is too large. Maximum size is 200 MB.');
+      return;
+    }
+    setUploading(true);
+    setUploadError('');
+    setUploadProgress(0);
+    try {
+      await meetingsApi.uploadAudio(params.id, file, (pct) => setUploadProgress(pct));
+      await meetingsApi.stop(params.id);
+      router.push(`/dashboard/meetings/${params.id}/processing`);
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.error || 'Upload failed. Please try again.');
+      setUploading(false);
+    }
+  };
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleAudioUpload(file);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleAudioUpload(file);
   };
 
   const formatDate = (dateString: string) => {
@@ -388,6 +430,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
             <div className="flex items-center gap-3">
               {meeting.status === 'completed' ? (
                 <button
+                  id="btn-record-again"
                   onClick={() => router.push(`/dashboard/meetings/${meeting.id}/record`)}
                   className="bg-blue-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-blue-700 transition"
                 >
@@ -395,18 +438,29 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 </button>
               ) : meeting.status === 'processing' ? (
                 <button
+                  id="btn-view-processing"
                   onClick={() => router.push(`/dashboard/meetings/${meeting.id}/processing`)}
                   className="bg-amber-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-amber-700 transition"
                 >
                   View Processing
                 </button>
               ) : (
-                <button
-                  onClick={handleReprocess}
-                  className="bg-blue-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-blue-700 transition"
-                >
-                  Process Audio
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    id="btn-start-recording"
+                    onClick={() => router.push(`/dashboard/meetings/${meeting.id}/record`)}
+                    className="bg-red-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-red-700 transition"
+                  >
+                    Start Recording
+                  </button>
+                  <button
+                    id="btn-upload-audio"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border border-gray-300 text-gray-700 text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Upload Audio
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -430,6 +484,57 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
             </div>
           </div>
         </div>
+
+        {/* Audio Upload Panel — shown for draft / failed meetings */}
+        {(meeting.status === 'draft' || meeting.status === 'failed') && (
+          <div className="bg-white border rounded-xl p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">Upload Audio File</h2>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,.webm"
+              style={{ display: 'none' }}
+              onChange={handleFileInput}
+            />
+
+            {uploading ? (
+              <div className="space-y-3">
+                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                  <span>Uploading audio...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-400">Do not close this page while uploading.</p>
+              </div>
+            ) : (
+              <div
+                id="upload-drop-zone"
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleFileDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition ${
+                  dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <svg className="w-8 h-8 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16v-8m0 0l-3 3m3-3l3 3M20 16.5A3.5 3.5 0 0116.5 20h-9A3.5 3.5 0 014 16.5v-1A3.5 3.5 0 017.5 12H8" />
+                </svg>
+                <p className="text-sm font-medium text-gray-700 mb-1">Drag and drop audio here</p>
+                <p className="text-xs text-gray-400">or click to browse — MP3, WAV, M4A, WebM, OGG up to 200 MB</p>
+              </div>
+            )}
+
+            {uploadError && (
+              <p className="text-red-600 text-xs mt-3">{uploadError}</p>
+            )}
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="flex gap-2 border-b">

@@ -15,3 +15,5 @@ apps/api/uploads/
 .expo/
 .expo-shared/
 *.tsbuildinfo
+*.rdb
+dump.rdb

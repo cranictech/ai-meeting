@@ -171,6 +171,20 @@ export const meetingsApi = {
 
   process: (id: string) => api.post(`/meetings/${id}/process`),
 
+  uploadAudio: (id: string, file: File, onProgress?: (pct: number) => void) => {
+    const formData = new FormData();
+    formData.append('audio', file, file.name);
+    formData.append('chunkIndex', '0');
+    return api.post(`/upload/meeting/${id}/chunk/direct`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      },
+    });
+  },
+
   delete: (id: string) => api.delete(`/meetings/${id}`),
 
   getSummary: (id: string) =>

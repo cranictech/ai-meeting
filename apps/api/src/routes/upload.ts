@@ -4,6 +4,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { Database, MeetingRepository } from '@meeting-ai/database';
 import { config } from '../config';
 import { AppError } from '../middleware/error-handler';
+import { queueMeeting } from '../workers/process-meeting';
 import * as multer from 'multer';
 
 const router = Router();
@@ -15,7 +16,7 @@ const meetingRepo = new MeetingRepository(db);
 const upload = multer.default({
   dest: 'uploads/temp/',
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB max
+    fileSize: 200 * 1024 * 1024, // 200MB max
   },
 });
 
@@ -125,6 +126,60 @@ async function handleDirectUpload(req: AuthRequest, res: any, next: any) {
     }
 
     await meetingRepo.createAudioChunk(recording.id, parseInt(chunkIndex), key);
+
+    res.json({ success: true, storageKey: key });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Single complete audio file upload — stores file, saves recording, triggers AI queue
+router.post('/meeting/:meetingId/upload', (req: any, res: any, next: any) => {
+  upload.single('audio')(req, res, (err: any) => {
+    if (err) return next(err);
+    handleFullUpload(req, res, next);
+  });
+});
+
+async function handleFullUpload(req: AuthRequest, res: any, next: any) {
+  const fs = require('fs');
+  try {
+    const { meetingId } = req.params;
+
+    const meeting = await meetingRepo.findById(meetingId);
+    if (!meeting) throw new AppError(404, 'Meeting not found');
+    if (meeting.user_id !== req.userId) throw new AppError(403, 'Access denied');
+
+    if (!req.file) throw new AppError(400, 'No audio file provided');
+
+    const key = await storageService.uploadAudioChunk(
+      req.userId!,
+      meetingId,
+      0,
+      fs.readFileSync(req.file.path)
+    );
+
+    // Clean temp file
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+
+    // Upsert recording record
+    let recording = await db.queryOne<any>(
+      'SELECT * FROM recordings WHERE meeting_id = $1',
+      [meetingId]
+    );
+    if (!recording) {
+      recording = await meetingRepo.createRecording(meetingId, key);
+    } else {
+      await db.query(
+        'UPDATE recordings SET storage_path = $1, updated_at = NOW() WHERE id = $2',
+        [key, recording.id]
+      );
+    }
+
+    await meetingRepo.createAudioChunk(recording.id, 0, key);
+
+    // Queue for processing
+    await queueMeeting(meetingId);
 
     res.json({ success: true, storageKey: key });
   } catch (error) {
