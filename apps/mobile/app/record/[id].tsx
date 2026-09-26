@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Audio } from 'expo-av';
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 import api from '../../lib/api';
 
@@ -10,7 +15,7 @@ export default function RecordScreen() {
   const router = useRouter();
   const meetingId = params.id as string;
 
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -23,31 +28,30 @@ export default function RecordScreen() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
-      if (recording) {
-        recording.stopAndUnloadAsync().catch(() => {});
+      if (recorder.isRecording) {
+        recorder.stop().catch(() => {});
       }
     };
-  }, [recording]);
+  }, [recorder]);
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Permission Required', 'Microphone access is required to record');
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      await recorder.prepareToRecordAsync();
+      recorder.record();
 
-      setRecording(newRecording);
       setIsRecording(true);
+      setIsPaused(false);
 
       await api.post(`/meetings/${meetingId}/start`);
 
@@ -57,8 +61,8 @@ export default function RecordScreen() {
 
       // Auto-save chunks every 10 seconds
       chunkIntervalRef.current = setInterval(async () => {
-        if (newRecording) {
-          await saveChunk(newRecording);
+        if (recorder.uri) {
+          await saveChunk(recorder.uri);
         }
       }, 10000);
     } catch (error) {
@@ -67,9 +71,8 @@ export default function RecordScreen() {
     }
   };
 
-  const saveChunk = async (rec: Audio.Recording) => {
+  const saveChunk = async (uri: string) => {
     try {
-      const uri = rec.getURI();
       if (!uri) return;
 
       const { data } = await api.post(`/upload/meeting/${meetingId}/chunk`, {
@@ -94,44 +97,38 @@ export default function RecordScreen() {
   };
 
   const pauseRecording = async () => {
-    if (recording) {
-      await recording.pauseAsync();
-      setIsPaused(true);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
-    }
+    recorder.pause();
+    setIsPaused(true);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
   };
 
   const resumeRecording = async () => {
-    if (recording) {
-      await recording.startAsync();
-      setIsPaused(false);
-      intervalRef.current = setInterval(() => {
-        setDuration((prev) => prev + 1);
-      }, 1000);
-      chunkIntervalRef.current = setInterval(async () => {
-        if (recording) {
-          await saveChunk(recording);
-        }
-      }, 10000);
-    }
+    recorder.record();
+    setIsPaused(false);
+    intervalRef.current = setInterval(() => {
+      setDuration((prev) => prev + 1);
+    }, 1000);
+    chunkIntervalRef.current = setInterval(async () => {
+      if (recorder.uri) {
+        await saveChunk(recorder.uri);
+      }
+    }, 10000);
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
-
     try {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
 
-      await recording.stopAndUnloadAsync();
-      await saveChunk(recording);
+      await recorder.stop();
+      if (recorder.uri) {
+        await saveChunk(recorder.uri);
+      }
 
       await api.post(`/meetings/${meetingId}/stop`);
 
-      setRecording(null);
       setIsRecording(false);
-
       router.replace(`/processing/${meetingId}`);
     } catch (error) {
       console.error('Failed to stop recording:', error);
