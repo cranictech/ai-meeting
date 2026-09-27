@@ -6,6 +6,7 @@ import {
   meetingsApi,
   actionItemsApi,
   transcriptsApi,
+  integrationsApi,
   type Meeting,
   type ActionItem,
   type MeetingSummary,
@@ -66,6 +67,8 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const [emailSubject, setEmailSubject] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState(false);
+  const [googleStatus, setGoogleStatus] = useState<any>(null);
+  const [showGoogleMenu, setShowGoogleMenu] = useState(false);
 
   useEffect(() => {
     loadAllMeetingData();
@@ -74,12 +77,13 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const loadAllMeetingData = async () => {
     try {
       setLoading(true);
-      const [meetingRes, summaryRes, decisionsRes, actionsRes, segmentsRes] = await Promise.all([
+      const [meetingRes, summaryRes, decisionsRes, actionsRes, segmentsRes, googleStatusRes] = await Promise.all([
         meetingsApi.get(params.id),
         meetingsApi.getSummary(params.id).catch(() => ({ data: {} })),
         meetingsApi.getDecisions(params.id).catch(() => ({ data: [] })),
         actionItemsApi.getByMeeting(params.id).catch(() => ({ data: [] })),
         transcriptsApi.getSegments(params.id).catch(() => ({ data: [] })),
+        integrationsApi.getGoogleStatus().catch(() => ({ data: { connected: false } })),
       ]);
 
       setMeeting(meetingRes.data);
@@ -89,6 +93,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       setDecisions(decisionsRes.data || []);
       setActionItems(actionsRes.data || []);
       setSegments(segmentsRes.data || []);
+      setGoogleStatus(googleStatusRes.data);
       setEmailSubject(`Meeting Notes: ${meetingRes.data.title}`);
     } catch (err: any) {
       setError('Failed to load meeting information');
@@ -130,7 +135,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       const res = await meetingsApi.translate(params.id, selectedLang);
       setTranslatedData(res.data);
     } catch (err) {
-      alert('Translation failed. Please verify AI provider configuration.');
+      alert('Translation failed. Please verify translation service configuration.');
     } finally {
       setTranslating(false);
     }
@@ -162,6 +167,52 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       }, 2000);
     } catch (err) {
       alert('Failed to send email notes.');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleSaveToDrive = async (format: 'doc' | 'pdf' = 'doc') => {
+    try {
+      const response = await integrationsApi.saveToDrive(params.id, format);
+      if (response.data.webViewLink) {
+        window.open(response.data.webViewLink, '_blank');
+      }
+      alert('Meeting notes saved to Google Drive successfully!');
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || 'Failed to save to Google Drive. Please ensure you have connected your Google account with Drive access.';
+      alert(errorMsg);
+    }
+  };
+
+  const handleSendViaGmail = async () => {
+    if (!emailRecipients) {
+      alert('Please enter recipient email addresses first.');
+      return;
+    }
+
+    const emails = emailRecipients
+      .split(/[\s,;]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes('@'));
+
+    if (emails.length === 0) {
+      alert('Please enter at least one valid recipient email address.');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      await integrationsApi.sendGmail(params.id, emails, emailSubject);
+      setEmailSuccess(true);
+      setTimeout(() => {
+        setShowEmailModal(false);
+        setEmailSuccess(false);
+        setEmailRecipients('');
+      }, 2000);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || 'Failed to send via Gmail. Please ensure you have connected your Google account with Gmail access.';
+      alert(errorMsg);
     } finally {
       setSendingEmail(false);
     }
@@ -408,6 +459,65 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
 
               <div className="relative">
                 <button
+                  onClick={() => setShowGoogleMenu(!showGoogleMenu)}
+                  className="px-3 py-1.5 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-1"
+                >
+                  Google
+                </button>
+
+                {showGoogleMenu && (
+                  <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 text-sm">
+                    {googleStatus?.canUseDrive ? (
+                      <button
+                        onClick={() => {
+                          handleSaveToDrive('doc');
+                          setShowGoogleMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
+                      >
+                        Save to Drive (DOCX)
+                      </button>
+                    ) : (
+                      <div className="px-4 py-2 text-gray-400 text-xs">
+                        Drive not connected
+                      </div>
+                    )}
+                    {googleStatus?.canUseGmail ? (
+                      <button
+                        onClick={() => {
+                          setShowEmailModal(true);
+                          setShowGoogleMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
+                      >
+                        Send via Gmail
+                      </button>
+                    ) : (
+                      <div className="px-4 py-2 text-gray-400 text-xs">
+                        Gmail not connected
+                      </div>
+                    )}
+                    {googleStatus?.canUseCalendar ? (
+                      <button
+                        onClick={() => {
+                          alert('Calendar integration coming soon - you can create events from settings');
+                          setShowGoogleMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
+                      >
+                        Create Calendar Event
+                      </button>
+                    ) : (
+                      <div className="px-4 py-2 text-gray-400 text-xs">
+                        Calendar not connected
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
                   className="px-3 py-1.5 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-1"
                 >
@@ -513,13 +623,24 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={sendingEmail}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {sendingEmail ? 'Sending...' : 'Send Notes'}
-                  </button>
+                  {googleStatus?.canUseGmail ? (
+                    <button
+                      type="button"
+                      onClick={handleSendViaGmail}
+                      disabled={sendingEmail}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {sendingEmail ? 'Sending...' : 'Send via Gmail'}
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={sendingEmail}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {sendingEmail ? 'Sending...' : 'Send Notes'}
+                    </button>
+                  )}
                 </div>
               </form>
             )}
@@ -754,7 +875,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            AI Notes & Summary
+            Notes & Summary
           </button>
           <button
             onClick={() => setActiveTab('actions')}

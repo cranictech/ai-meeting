@@ -18,7 +18,7 @@ export interface MeetingAnalysis {
   questions: string[];
 }
 
-export class AIAnalysisService {
+export class AnalysisService {
   private openai: OpenAI | null = null;
 
   constructor() {
@@ -58,7 +58,7 @@ Respond in JSON format:
           messages: [
             {
               role: 'system',
-              content: 'You are an AI assistant that analyzes meeting transcripts. Extract only factual information from the transcript. Never hallucinate or invent details.',
+              content: 'You are an assistant that analyzes meeting transcripts. Extract only factual information from the transcript. Never hallucinate or invent details.',
             },
             { role: 'user', content: prompt },
           ],

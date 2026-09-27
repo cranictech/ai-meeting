@@ -247,7 +247,7 @@ export default function DashboardPage() {
                     <input
                       type="checkbox"
                       onChange={() => handleToggleTask(item)}
-                      className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                      className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                       title="Mark as complete"
                     />
                     <div className="flex-1 min-w-0">

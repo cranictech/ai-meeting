@@ -288,7 +288,7 @@ export default function MeetingDetailScreen() {
                 <Ionicons name="document-text-outline" size={40} color="#9ca3af" />
                 <Text style={styles.emptyTabText}>No summary generated yet.</Text>
                 <Text style={styles.emptyTabSubtext}>
-                  Record audio or upload a recording to generate AI notes.
+                  Record audio or upload a recording to generate notes.
                 </Text>
               </View>
             )}

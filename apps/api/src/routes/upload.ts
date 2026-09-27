@@ -133,7 +133,7 @@ async function handleDirectUpload(req: AuthRequest, res: any, next: any) {
   }
 }
 
-// Single complete audio file upload — stores file, saves recording, triggers AI queue
+// Single complete audio file upload — stores file, saves recording, triggers processing queue
 router.post('/meeting/:meetingId/upload', (req: any, res: any, next: any) => {
   upload.single('audio')(req, res, (err: any) => {
     if (err) return next(err);

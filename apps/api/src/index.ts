@@ -9,6 +9,7 @@ import { meetingsRouter } from './routes/meetings';
 import { actionItemsRouter } from './routes/action-items';
 import { uploadRouter } from './routes/upload';
 import { transcriptsRouter } from './routes/transcripts';
+import { integrationsRouter } from './routes/integrations';
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use('/meetings', meetingsRouter);
 app.use('/action-items', actionItemsRouter);
 app.use('/upload', uploadRouter);
 app.use('/transcripts', transcriptsRouter);
+app.use('/integrations', integrationsRouter);
 
 app.use(errorHandler);
 

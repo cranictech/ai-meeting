@@ -223,7 +223,7 @@ export default function TasksPage() {
               {filter === 'all' ? 'No action items yet' : `No ${filter.replace('_', ' ')} action items`}
             </p>
             <p className="text-sm text-gray-500 max-w-sm mx-auto">
-              Action items are automatically extracted by AI when meetings finish processing, or you can add them manually.
+              Action items are automatically extracted when meetings finish processing, or you can add them manually.
             </p>
             <div className="pt-2">
               <Link

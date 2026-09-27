@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi, type Profile } from '@/lib/api';
+import { authApi, oauthApi, type Profile } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -11,6 +11,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [googleStatus, setGoogleStatus] = useState<any>(null);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     country: '',
@@ -29,6 +31,7 @@ export default function SettingsPage() {
     }
 
     loadProfile();
+    loadGoogleStatus();
   }, []);
 
   const loadProfile = async () => {
@@ -53,6 +56,46 @@ export default function SettingsPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadGoogleStatus = async () => {
+    try {
+      setLoadingGoogle(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/integrations/google/status`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGoogleStatus(data);
+      }
+    } catch (error) {
+      console.error('Failed to load Google status:', error);
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
+
+  const handleConnectGoogle = async (scopes: 'basic' | 'full') => {
+    try {
+      const response = await oauthApi.getGoogleUrl(scopes);
+      if (response.data.authUrl) {
+        window.location.href = response.data.authUrl;
+      }
+    } catch (error) {
+      console.error('Failed to get Google OAuth URL:', error);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    try {
+      await oauthApi.disconnectGoogle();
+      setGoogleStatus(null);
+      loadGoogleStatus();
+    } catch (error) {
+      console.error('Failed to disconnect Google:', error);
     }
   };
 
@@ -262,6 +305,104 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+
+        {/* Google Integrations Section */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">Google Integrations</h2>
+          <p className="text-gray-600 mb-6">Connect your Google account to enable Drive, Gmail, and Calendar features</p>
+
+          {loadingGoogle ? (
+            <div className="bg-white border rounded-lg p-6 text-center text-gray-600">
+              Loading integration status...
+            </div>
+          ) : googleStatus?.connected ? (
+            <div className="bg-white border rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Google Account Connected</h3>
+                  <p className="text-sm text-gray-600">Connected with access to: {googleStatus.scopes?.length || 0} services</p>
+                </div>
+                <button
+                  onClick={handleDisconnectGoogle}
+                  className="px-4 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 text-sm"
+                >
+                  Disconnect
+                </button>
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${googleStatus.canUseDrive ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <span className="text-sm">Google Drive - Save meeting notes</span>
+                  </div>
+                  {!googleStatus.canUseDrive && (
+                    <button
+                      onClick={() => handleConnectGoogle('drive')}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Enable
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${googleStatus.canUseGmail ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <span className="text-sm">Gmail - Send meeting notes via email</span>
+                  </div>
+                  {!googleStatus.canUseGmail && (
+                    <button
+                      onClick={() => handleConnectGoogle('gmail')}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Enable
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${googleStatus.canUseCalendar ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <span className="text-sm">Google Calendar - Create events & attach notes</span>
+                  </div>
+                  {!googleStatus.canUseCalendar && (
+                    <button
+                      onClick={() => handleConnectGoogle('calendar')}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Enable
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Connect Google Account</h3>
+                  <p className="text-sm text-gray-600">Enable Drive, Gmail, and Calendar integrations</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleConnectGoogle('basic')}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+                >
+                  Basic (Profile only)
+                </button>
+                <button
+                  onClick={() => handleConnectGoogle('full')}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                >
+                  Full Access (Drive, Gmail, Calendar)
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

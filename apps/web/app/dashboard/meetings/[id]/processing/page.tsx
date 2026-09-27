@@ -98,7 +98,7 @@ export default function ProcessingPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className={`w-2.5 h-2.5 rounded-full ${progress >= 80 ? 'bg-green-500' : progress >= 40 ? 'bg-blue-600 animate-pulse' : 'bg-gray-300'}`} />
-                  <span className="text-gray-700">AI notes, decisions, and tasks generation</span>
+                  <span className="text-gray-700">Notes, decisions, and tasks generation</span>
                 </div>
               </div>
             </>

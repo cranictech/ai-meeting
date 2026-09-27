@@ -25,12 +25,26 @@ router.get('/google/url', (req, res) => {
   }
 
   const state = Math.random().toString(36).substring(2, 15);
+  const requestedScopes = req.query.scopes as string || 'basic';
+  
+  let scopes = [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+  ];
+  
+  if (requestedScopes === 'full' || requestedScopes === 'drive') {
+    scopes.push('https://www.googleapis.com/auth/drive.file');
+  }
+  if (requestedScopes === 'full' || requestedScopes === 'gmail') {
+    scopes.push('https://www.googleapis.com/auth/gmail.send');
+  }
+  if (requestedScopes === 'full' || requestedScopes === 'calendar') {
+    scopes.push('https://www.googleapis.com/auth/calendar.events');
+  }
+  
   const authUrl = googleClient.generateAuthUrl({
     access_type: 'offline',
-    scope: [
-      'https://www.googleapis.com/auth/userinfo.email',
-      'https://www.googleapis.com/auth/userinfo.profile',
-    ],
+    scope: scopes,
     state,
   });
 

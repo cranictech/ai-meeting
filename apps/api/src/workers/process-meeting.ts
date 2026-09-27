@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { config } from '../config';
 import { Database, MeetingRepository, TranscriptRepository, ActionItemRepository } from '@meeting-ai/database';
 import { TranscriptionService } from '../services/transcription';
-import { AIAnalysisService } from '../services/ai-analysis';
+import { AnalysisService } from '../services/analysis';
 import { NotificationService } from '../services/notification';
 
 let connection: IORedis | null = null;
@@ -40,7 +40,7 @@ const meetingRepo = new MeetingRepository(db);
 const transcriptRepo = new TranscriptRepository(db);
 const actionItemRepo = new ActionItemRepository(db);
 const transcriptionService = new TranscriptionService();
-const aiService = new AIAnalysisService();
+const aiService = new AnalysisService();
 const notificationService = new NotificationService(db);
 
 interface MeetingJob {

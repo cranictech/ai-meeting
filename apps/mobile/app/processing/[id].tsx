@@ -33,7 +33,7 @@ export default function ProcessingScreen() {
           clearInterval(stepInterval);
           router.replace(`/meetings/${meetingId}`);
         } else if (res.data.status === 'failed') {
-          setError('AI processing encountered an error. Please retry or re-record.');
+          setError('Processing encountered an error. Please retry or re-record.');
           clearInterval(stepInterval);
         }
       } catch (err: any) {

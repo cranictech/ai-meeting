@@ -253,8 +253,8 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
       return res.json({ message: 'No summary available to translate' });
     }
 
-    const { AIAnalysisService } = await import('../services/ai-analysis');
-    const ai = new AIAnalysisService();
+    const { AnalysisService } = await import('../services/analysis');
+    const ai = new AnalysisService();
 
     const translatedText = await ai.translate(summary.summary_text, targetLanguage);
     const translatedExec = summary.executive_summary

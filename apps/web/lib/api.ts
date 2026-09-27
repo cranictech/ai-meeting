@@ -142,6 +142,9 @@ export const authApi = {
 export const oauthApi = {
   getGoogleAuthUrl: () => api.get<{ authUrl: string; state: string }>('/oauth/google/url'),
 
+  getGoogleUrl: (scopes: 'basic' | 'full' = 'basic') =>
+    api.get<{ authUrl: string; state: string }>('/oauth/google/url', { params: { scopes } }),
+
   handleGoogleCallback: (code: string) =>
     api.post<{ user: User; token: string; isNewUser: boolean }>('/oauth/google/callback', { code }),
 
@@ -240,6 +243,51 @@ export const actionItemsApi = {
 
   delete: (id: string) =>
     api.delete(`/action-items/${id}`),
+};
+
+export const integrationsApi = {
+  getGoogleStatus: () =>
+    api.get<{
+      connected: boolean;
+      scopes: string[];
+      canUseDrive: boolean;
+      canUseGmail: boolean;
+      canUseCalendar: boolean;
+    }>('/integrations/google/status'),
+
+  saveToDrive: (meetingId: string, format: 'doc' | 'pdf' = 'doc') =>
+    api.post<{ success: boolean; webViewLink?: string }>('/integrations/google/drive/save', { meetingId, format }),
+
+  sendGmail: (meetingId: string, recipients: string[], subject?: string, message?: string) =>
+    api.post<{ success: boolean; recipients: string[] }>('/integrations/google/gmail/send', {
+      meetingId,
+      recipients,
+      subject,
+      message,
+    }),
+
+  createCalendarEvent: (
+    meetingId: string,
+    title: string,
+    description: string,
+    startTime: string,
+    endTime: string,
+    attendees?: string[]
+  ) =>
+    api.post<{ success: boolean; htmlLink?: string }>('/integrations/google/calendar/create', {
+      meetingId,
+      title,
+      description,
+      startTime,
+      endTime,
+      attendees,
+    }),
+
+  attachToCalendar: (meetingId: string, calendarEventId: string) =>
+    api.post<{ success: boolean }>('/integrations/google/calendar/attach', {
+      meetingId,
+      calendarEventId,
+    }),
 };
 
 export default api;
