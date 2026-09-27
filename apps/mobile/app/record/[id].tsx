@@ -90,7 +90,7 @@ export default function RecordScreen() {
             } as any);
             formData.append('chunkIndex', '0');
 
-            const apiUrl = await AsyncStorage.getItem('custom_api_url') || 'http://192.168.3.136:3000';
+            const apiUrl = await AsyncStorage.getItem('custom_api_url') || '';
             const response = await fetch(`${apiUrl}/upload/meeting/${upload.meetingId}/chunk/direct`, {
               method: 'POST',
               headers: {
@@ -294,13 +294,13 @@ export default function RecordScreen() {
       {/* Network Status Indicator */}
       {isOffline && (
         <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>⚠️ Offline - Recording will be saved locally</Text>
+          <Text style={styles.offlineText}>Offline - Recording will be saved locally</Text>
         </View>
       )}
 
       {pendingUploads > 0 && !isOffline && (
         <View style={styles.syncBanner}>
-          <Text style={styles.syncText}>📤 Syncing {pendingUploads} pending upload(s)...</Text>
+          <Text style={styles.syncText}>Syncing {pendingUploads} pending upload(s)...</Text>
         </View>
       )}
 

@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import os from 'os';
 import { config } from './config';
 import { errorHandler } from './middleware/error-handler';
 import { authRouter } from './routes/auth';
@@ -38,22 +37,6 @@ app.use('/billing', subscriptionsRouter);
 
 app.use(errorHandler);
 
-function getLocalIp(): string {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name] || []) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return 'localhost';
-}
-
 app.listen(config.port, '0.0.0.0', () => {
-  const localIp = getLocalIp();
-  console.log(`\n🚀 API server running!`);
-  console.log(`   Local:   http://localhost:${config.port}`);
-  console.log(`   Network: http://${localIp}:${config.port}`);
-  console.log(`\n📱 Set this in your mobile app: http://${localIp}:${config.port}\n`);
+  console.log(`API server running on port ${config.port}`);
 });

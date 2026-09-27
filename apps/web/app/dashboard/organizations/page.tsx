@@ -103,7 +103,7 @@ export default function OrganizationsPage() {
 
         {organizations.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 text-center">
-            <div className="text-gray-400 text-5xl mb-4">🏢</div>
+            <div className="text-gray-400 text-5xl mb-4">[ ]</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No teams yet</h3>
             <p className="text-gray-600 mb-4">Create your first team to collaborate with others</p>
             <button
@@ -119,7 +119,7 @@ export default function OrganizationsPage() {
               <div key={org.id} className="bg-white border rounded-xl p-6 hover:shadow-md transition">
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">🏢</span>
+                    <span className="text-2xl font-bold text-gray-500">Org</span>
                   </div>
                   <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                     {org.slug}
@@ -152,7 +152,7 @@ export default function OrganizationsPage() {
                 onClick={() => setShowCreateModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                ✕
+                x
               </button>
             </div>
 

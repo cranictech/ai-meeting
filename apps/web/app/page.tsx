@@ -143,7 +143,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-gray-600">
-            © 2026 Meeting AI. All rights reserved.
+            (c) 2026 Meeting AI. All rights reserved.
           </div>
         </div>
       </footer>

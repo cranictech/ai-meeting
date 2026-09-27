@@ -43,7 +43,7 @@ export class ExportService {
           doc.fontSize(14).font('Helvetica-Bold').text('Key Decisions');
           doc.moveDown(0.5);
           decisions.forEach((decision) => {
-            doc.fontSize(11).font('Helvetica').text(`• ${decision.decision}`);
+            doc.fontSize(11).font('Helvetica').text(`- ${decision.decision}`);
           });
           doc.moveDown();
         }
@@ -53,7 +53,7 @@ export class ExportService {
           doc.fontSize(14).font('Helvetica-Bold').text('Action Items');
           doc.moveDown(0.5);
           actionItems.forEach((item) => {
-            const status = item.status === 'completed' ? '✓' : '○';
+            const status = item.status === 'completed' ? '[done]' : '[ ]';
             const assignee = item.assignee ? ` (${item.assignee})` : '';
             const due = item.due_date ? ` - Due: ${item.due_date}` : '';
             doc.fontSize(11).font('Helvetica').text(`${status} ${item.task}${assignee}${due}`);
@@ -161,7 +161,7 @@ export class ExportService {
         decisions.forEach((decision) => {
           children.push(
             new Paragraph({
-              text: `• ${decision.decision}`,
+              text: `- ${decision.decision}`,
               bullet: { level: 0 },
               spacing: { after: 100 },
             })
@@ -180,7 +180,7 @@ export class ExportService {
           })
         );
         actionItems.forEach((item) => {
-          const status = item.status === 'completed' ? '✓' : '○';
+          const status = item.status === 'completed' ? '[done]' : '[ ]';
           const assignee = item.assignee ? ` (${item.assignee})` : '';
           const due = item.due_date ? ` - Due: ${item.due_date}` : '';
           children.push(

@@ -737,13 +737,13 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 }`}>
                   {meeting.status}
                 </span>
-                <span className="text-gray-400">•</span>
+                <span className="text-gray-400">-</span>
                 <span className="text-gray-600 font-medium capitalize">
                   {meeting.meeting_type || 'General'}
                 </span>
                 {meeting.detected_languages && meeting.detected_languages.length > 0 && (
                   <>
-                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-400">-</span>
                     <span className="text-gray-600 font-medium">
                       {meeting.detected_languages.map((l: string) => l.toUpperCase()).join(', ')}
                     </span>
@@ -751,7 +751,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 )}
                 {meeting.output_language && meeting.output_language !== 'en' && (
                   <>
-                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-400">-</span>
                     <span className="text-blue-600 font-medium">
                       Notes: {meeting.output_language.toUpperCase()}
                     </span>
@@ -833,7 +833,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 onClick={togglePlayPause}
                 className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition w-8 h-8 flex items-center justify-center text-xs font-bold"
               >
-                {isPlaying ? '||' : '▶'}
+                {isPlaying ? '||' : '>'}
               </button>
               <input
                 type="range"
@@ -860,7 +860,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
           </div>
         )}
 
-        {/* Audio Upload Panel — shown for draft / failed meetings */}
+        {/* Audio Upload Panel - shown for draft / failed meetings */}
         {(meeting.status === 'draft' || meeting.status === 'failed') && (
           <div className="bg-white border rounded-xl p-6 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">Upload Audio File</h2>
@@ -897,7 +897,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 }`}
               >
                 <p className="text-sm font-medium text-gray-700 mb-1">Drag and drop audio here</p>
-                <p className="text-xs text-gray-400">or click to browse — MP3, WAV, M4A, WebM, OGG up to 200 MB</p>
+                <p className="text-xs text-gray-400">or click to browse - MP3, WAV, M4A, WebM, OGG up to 200 MB</p>
               </div>
             )}
 
