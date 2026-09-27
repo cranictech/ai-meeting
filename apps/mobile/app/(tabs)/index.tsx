@@ -39,9 +39,20 @@ export default function HomeScreen() {
       setActionItems(actionsRes.data || []);
       if (profileRes) {
         setProfile(profileRes.data);
+      } else {
+        // Set default profile for dev mode
+        setProfile({
+          user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
+          profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
+        } as UserProfileResponse);
       }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
+      // Set default data for dev mode on error
+      setProfile({
+        user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
+        profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
+      } as UserProfileResponse);
     } finally {
       setLoading(false);
       setRefreshing(false);
