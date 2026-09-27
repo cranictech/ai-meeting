@@ -28,7 +28,8 @@ export default function MeetingsScreen() {
       const res = await meetingsApi.list();
       setMeetings(res.data || []);
     } catch (err) {
-      console.error('Failed to load meetings:', err);
+      console.warn('Failed to load meetings:', err?.message || err);
+      setMeetings([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

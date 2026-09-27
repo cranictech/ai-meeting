@@ -1,20 +1,54 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 export const getDynamicApiUrl = (): string => {
   if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+    const envUrl = process.env.EXPO_PUBLIC_API_URL.trim().replace(/\/+$/, '');
+    if (envUrl) return envUrl;
   }
-  if (Constants.expoConfig?.extra?.apiUrl) {
-    return Constants.expoConfig.extra.apiUrl;
+
+  const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
+  if (extraApiUrl && typeof extraApiUrl === 'string' && extraApiUrl.trim() !== '') {
+    return extraApiUrl.trim().replace(/\/+$/, '');
   }
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    if (host) return `http://${host}:3000`;
+
+  // 1. Resolve host from NativeModules bundle scriptURL (active in Expo Go & bare React Native)
+  const scriptURL = NativeModules?.SourceCode?.scriptURL;
+  if (typeof scriptURL === 'string' && scriptURL) {
+    const match = scriptURL.match(/^https?:\/\/([^:\/]+)/);
+    if (match && match[1] && match[1] !== 'localhost' && match[1] !== '127.0.0.1') {
+      return `http://${match[1]}:3000`;
+    }
   }
-  return '';
+
+  // 2. Resolve host from Expo Constants sources
+  const hostSources = [
+    Constants.expoConfig?.hostUri,
+    (Constants as any).expoGoConfig?.debuggerHost,
+    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost,
+    (Constants as any).manifest?.debuggerHost,
+    (Constants as any).manifest2?.extra?.expoClient?.hostUri,
+    (Constants as any).manifest?.extra?.expoClient?.hostUri,
+    (Constants as any).experienceUrl,
+    (Constants as any).linkingUri,
+  ];
+
+  for (const src of hostSources) {
+    if (typeof src === 'string' && src.trim()) {
+      const match = src.match(/(?:^|[a-z]+:\/\/)([^:\/\s]+)/i);
+      if (match && match[1] && match[1] !== 'localhost' && match[1] !== '127.0.0.1') {
+        return `http://${match[1]}:3000`;
+      }
+    }
+  }
+
+  // 3. Fallback for iOS simulator / web / Android emulator
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  }
+  return 'http://localhost:3000';
 };
 
 export const DEFAULT_API_URL = getDynamicApiUrl();
@@ -57,6 +91,22 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+      const activeUrl = error.config?.baseURL || getDynamicApiUrl();
+      error.message = `Cannot connect to server at ${activeUrl}. Please ensure server is running on the same network.`;
+    } else if (error.response?.status === 401) {
+      const token = await AsyncStorage.getItem('auth_token');
+      if (token && token !== 'dev-token') {
+        await AsyncStorage.removeItem('auth_token');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export interface User {
   id: string;

@@ -30,7 +30,7 @@ export default function HomeScreen() {
   const loadData = useCallback(async () => {
     try {
       const [meetingsRes, actionsRes, profileRes] = await Promise.all([
-        meetingsApi.list(),
+        meetingsApi.list().catch(() => ({ data: [] })),
         actionItemsApi.getUserItems('pending').catch(() => ({ data: [] })),
         authApi.getProfile().catch(() => null),
       ]);
@@ -47,7 +47,7 @@ export default function HomeScreen() {
         } as unknown as UserProfileResponse);
       }
     } catch (err) {
-      console.error('Failed to load dashboard data:', err);
+      console.warn('Dashboard data warning:', err?.message || err);
       // Set default data for dev mode on error
       setProfile({
         user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },

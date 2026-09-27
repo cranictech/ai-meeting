@@ -29,7 +29,8 @@ export default function SearchScreen() {
       const res = await meetingsApi.search(q.trim());
       setResults(res.data || []);
     } catch (err) {
-      console.error('Search failed:', err);
+      console.warn('Search failed:', err?.message || err);
+      setResults([]);
     } finally {
       setLoading(false);
     }

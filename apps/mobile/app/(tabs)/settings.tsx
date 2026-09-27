@@ -48,7 +48,7 @@ export default function SettingsScreen() {
       setTimezone(res.data.profile.timezone || 'UTC');
       setOutputLanguage(res.data.profile.output_language || 'en');
     } catch (err) {
-      console.error('Failed to load profile:', err);
+      console.warn('Failed to load profile:', err?.message || err);
     } finally {
       setLoading(false);
     }

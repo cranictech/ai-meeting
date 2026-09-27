@@ -31,7 +31,8 @@ export default function OrganizationsScreen() {
       const res = await organizationsApi.list();
       setOrganizations(res.data || []);
     } catch (err) {
-      console.error('Failed to load organizations:', err);
+      console.warn('Failed to load organizations:', err?.message || err);
+      setOrganizations([]);
     } finally {
       setLoading(false);
     }
