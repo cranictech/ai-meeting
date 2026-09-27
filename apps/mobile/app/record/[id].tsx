@@ -10,7 +10,7 @@ import {
 import * as FileSystem from 'expo-file-system/legacy';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../../lib/api';
+import api, { getActiveApiUrl } from '../../lib/api';
 
 export default function RecordScreen() {
   const params = useLocalSearchParams();
@@ -90,7 +90,7 @@ export default function RecordScreen() {
             } as any);
             formData.append('chunkIndex', '0');
 
-            const apiUrl = await AsyncStorage.getItem('custom_api_url') || '';
+            const apiUrl = await getActiveApiUrl();
             const response = await fetch(`${apiUrl}/upload/meeting/${upload.meetingId}/chunk/direct`, {
               method: 'POST',
               headers: {

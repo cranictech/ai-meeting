@@ -2,11 +2,26 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-export const DEFAULT_API_URL = Constants.expoConfig?.extra?.apiUrl || '';
+export const getDynamicApiUrl = (): string => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  if (Constants.expoConfig?.extra?.apiUrl) {
+    return Constants.expoConfig.extra.apiUrl;
+  }
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    if (host) return `http://${host}:3000`;
+  }
+  return '';
+};
+
+export const DEFAULT_API_URL = getDynamicApiUrl();
 
 export async function getActiveApiUrl(): Promise<string> {
   const customUrl = await AsyncStorage.getItem('custom_api_url');
-  return customUrl || DEFAULT_API_URL;
+  return customUrl || getDynamicApiUrl();
 }
 
 export async function setCustomApiUrl(url: string): Promise<void> {
@@ -26,6 +41,8 @@ api.interceptors.request.use(async (config) => {
   const customUrl = await AsyncStorage.getItem('custom_api_url');
   if (customUrl) {
     config.baseURL = customUrl.trim().replace(/\/+$/, '');
+  } else if (!config.baseURL || config.baseURL === '') {
+    config.baseURL = getDynamicApiUrl();
   }
   
   // Add dev mode header if enabled
