@@ -8,6 +8,12 @@ export interface AuthRequest extends Request {
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
+  // Dev mode: bypass authentication if DEV_MODE header is present
+  if (req.headers['x-dev-mode'] === 'true' || config.devMode) {
+    req.userId = 'dev-user-id';
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

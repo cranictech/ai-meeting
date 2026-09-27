@@ -27,6 +27,13 @@ api.interceptors.request.use(async (config) => {
   if (customUrl) {
     config.baseURL = customUrl.trim().replace(/\/+$/, '');
   }
+  
+  // Add dev mode header if enabled
+  const devMode = await AsyncStorage.getItem('dev_mode');
+  if (devMode === 'true') {
+    config.headers['X-Dev-Mode'] = 'true';
+  }
+  
   const token = await AsyncStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

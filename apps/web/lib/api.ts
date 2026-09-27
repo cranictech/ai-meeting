@@ -6,6 +6,11 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
+    // Add dev mode header if enabled
+    if (localStorage.getItem('dev_mode') === 'true') {
+      config.headers['X-Dev-Mode'] = 'true';
+    }
+    
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

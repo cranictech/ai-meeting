@@ -23,7 +23,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (!token) {
+    const devMode = typeof window !== 'undefined' ? localStorage.getItem('dev_mode') : null;
+    
+    if (!token && !devMode) {
       router.push('/login');
       return;
     }

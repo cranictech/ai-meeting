@@ -5,6 +5,7 @@ dotenv.config();
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
+  devMode: process.env.DEV_MODE === 'true',
   
   database: {
     host: process.env.DB_HOST || 'localhost',

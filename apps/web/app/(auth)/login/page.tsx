@@ -28,6 +28,12 @@ export default function LoginPage() {
     }
   };
 
+  const handleDevMode = () => {
+    localStorage.setItem('dev_mode', 'true');
+    localStorage.setItem('auth_token', 'dev-token');
+    router.push('/dashboard');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -93,6 +99,15 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        <div className="mt-4">
+          <button
+            onClick={handleDevMode}
+            className="w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Enter Dev Mode (No Auth)
+          </button>
+        </div>
       </div>
     </div>
   );
