@@ -8,6 +8,8 @@ import {
   setAudioModeAsync,
 } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
+import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../lib/api';
 
 export default function RecordScreen() {
@@ -19,20 +21,103 @@ export default function RecordScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [isOffline, setIsOffline] = useState(false);
+  const [pendingUploads, setPendingUploads] = useState(0);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const chunkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const networkCheckRef = useRef<NodeJS.Timeout | null>(null);
   const chunkIndex = useRef(0);
+  const offlineChunks = useRef<string[]>([]);
 
   useEffect(() => {
+    checkNetworkStatus();
+    networkCheckRef.current = setInterval(checkNetworkStatus, 5000);
+    loadPendingUploads();
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
+      if (networkCheckRef.current) clearInterval(networkCheckRef.current);
       if (recorder.isRecording) {
         recorder.stop().catch(() => {});
       }
     };
   }, [recorder]);
+
+  const checkNetworkStatus = async () => {
+    const networkState = await NetInfo.fetch();
+    const offline = !networkState.isConnected;
+    setIsOffline(offline);
+
+    // If we just came back online, sync pending uploads
+    if (!offline && pendingUploads > 0) {
+      syncPendingUploads();
+    }
+  };
+
+  const loadPendingUploads = async () => {
+    try {
+      const pending = await AsyncStorage.getItem('pending_uploads');
+      if (pending) {
+        const uploads = JSON.parse(pending);
+        setPendingUploads(uploads.length);
+      }
+    } catch (error) {
+      console.error('Failed to load pending uploads:', error);
+    }
+  };
+
+  const syncPendingUploads = async () => {
+    try {
+      const pending = await AsyncStorage.getItem('pending_uploads');
+      if (!pending) return;
+
+      const uploads = JSON.parse(pending);
+      const successful = [];
+
+      for (const upload of uploads) {
+        try {
+          const fileUri = upload.localUri;
+          const fileExists = await FileSystem.getInfoAsync(fileUri);
+          
+          if (fileExists.exists) {
+            const formData = new FormData();
+            formData.append('audio', {
+              uri: fileUri,
+              type: 'audio/webm',
+              name: 'audio',
+            } as any);
+            formData.append('chunkIndex', '0');
+
+            const apiUrl = await AsyncStorage.getItem('custom_api_url') || 'http://192.168.3.136:3000';
+            const response = await fetch(`${apiUrl}/upload/meeting/${upload.meetingId}/chunk/direct`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'multipart/form-data',
+                Authorization: `Bearer ${await AsyncStorage.getItem('auth_token')}`,
+              },
+              body: formData,
+            });
+
+            if (response.ok) {
+              await FileSystem.deleteAsync(fileUri);
+              successful.push(upload);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to sync upload:', error);
+        }
+      }
+
+      // Remove successful uploads from pending list
+      const remaining = uploads.filter(u => !successful.includes(u));
+      await AsyncStorage.setItem('pending_uploads', JSON.stringify(remaining));
+      setPendingUploads(remaining.length);
+    } catch (error) {
+      console.error('Failed to sync pending uploads:', error);
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -75,6 +160,25 @@ export default function RecordScreen() {
     try {
       if (!uri) return;
 
+      // If offline, save chunk locally
+      if (isOffline) {
+        const fileName = `meeting_${meetingId}_chunk_${chunkIndex.current}.webm`;
+        const fileDir = FileSystem.documentDirectory + 'offline_recordings';
+        const fileUri = fileDir + '/' + fileName;
+
+        await FileSystem.makeDirectoryAsync(fileDir);
+        await FileSystem.copyAsync({
+          from: uri,
+          to: fileUri,
+        });
+
+        offlineChunks.current.push(fileUri);
+        console.log(`Saved chunk ${chunkIndex.current} locally for offline mode`);
+        chunkIndex.current++;
+        return;
+      }
+
+      // Online mode - upload to server
       const { data } = await api.post(`/upload/meeting/${meetingId}/chunk`, {
         chunkIndex: chunkIndex.current,
       });
@@ -93,6 +197,26 @@ export default function RecordScreen() {
       }
     } catch (error) {
       console.error('Failed to save chunk:', error);
+      // If upload fails, save locally
+      if (!isOffline) {
+        const fileName = `meeting_${meetingId}_chunk_${chunkIndex.current}.webm`;
+        const fileDir = FileSystem.documentDirectory + 'offline_recordings';
+        const fileUri = fileDir + '/' + fileName;
+
+        try {
+          await FileSystem.makeDirectoryAsync(fileDir);
+          await FileSystem.copyAsync({
+            from: uri,
+            to: fileUri,
+          });
+          offlineChunks.current.push(fileUri);
+          chunkIndex.current++;
+          setIsOffline(true);
+          console.log('Upload failed, saved chunk locally');
+        } catch (localError) {
+          console.error('Failed to save chunk locally:', localError);
+        }
+      }
     }
   };
 
@@ -128,6 +252,28 @@ export default function RecordScreen() {
 
       await api.post(`/meetings/${meetingId}/stop`);
 
+      // If we have offline chunks, save them to pending uploads
+      if (offlineChunks.current.length > 0) {
+        try {
+          const pending = await AsyncStorage.getItem('pending_uploads') || '[]';
+          const uploads = JSON.parse(pending);
+          
+          for (const chunkUri of offlineChunks.current) {
+            uploads.push({
+              meetingId,
+              localUri: chunkUri,
+              timestamp: Date.now(),
+            });
+          }
+          
+          await AsyncStorage.setItem('pending_uploads', JSON.stringify(uploads));
+          setPendingUploads(uploads.length);
+          offlineChunks.current = [];
+        } catch (error) {
+          console.error('Failed to save pending uploads:', error);
+        }
+      }
+
       setIsRecording(false);
       router.replace(`/processing/${meetingId}`);
     } catch (error) {
@@ -145,6 +291,19 @@ export default function RecordScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Network Status Indicator */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>⚠️ Offline - Recording will be saved locally</Text>
+        </View>
+      )}
+
+      {pendingUploads > 0 && !isOffline && (
+        <View style={styles.syncBanner}>
+          <Text style={styles.syncText}>📤 Syncing {pendingUploads} pending upload(s)...</Text>
+        </View>
+      )}
+
       <View style={styles.content}>
         <View
           style={[
@@ -162,7 +321,7 @@ export default function RecordScreen() {
 
         {isRecording && (
           <Text style={styles.subtitle}>
-            {isPaused ? 'Recording paused' : 'Listening...'}
+            {isOffline ? 'Recording offline (saved locally)' : isPaused ? 'Recording paused' : 'Listening...'}
           </Text>
         )}
 
@@ -197,6 +356,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  offlineBanner: {
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+  },
+  offlineText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400e',
+  },
+  syncBanner: {
+    backgroundColor: '#dcfce7',
+    padding: 12,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#86efac',
+  },
+  syncText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#166534',
   },
   content: {
     flex: 1,
