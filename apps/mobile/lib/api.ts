@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-export const DEFAULT_API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://192.168.3.136:3000';
+export const DEFAULT_API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://192.168.100.6:3000';
 
 export async function getActiveApiUrl(): Promise<string> {
   const customUrl = await AsyncStorage.getItem('custom_api_url');
