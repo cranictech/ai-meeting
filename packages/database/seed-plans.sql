@@ -1,0 +1,6 @@
+-- Insert default subscription plans
+INSERT INTO plans (id, name, slug, price_monthly, price_annual, limits, features, active) VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'Free', 'free', 0, 0, '{"transcriptionMinutes": 60, "storageGB": 1, "meetings": 10, "exports": 5, "aiTokens": 100000, "teamMembers": 1}', '["Basic transcription", "AI-powered notes", "Action items extraction", "Meeting search", "1GB storage", "60 transcription minutes/month", "PDF exports"]', true),
+  ('550e8400-e29b-41d4-a716-446655440001', 'Pro', 'pro', 9.99, 99.99, '{"transcriptionMinutes": 500, "storageGB": 10, "meetings": 100, "exports": 50, "aiTokens": 1000000, "teamMembers": 1}', '["Everything in Free", "500 transcription minutes/month", "10GB storage", "Advanced AI analysis", "DOCX exports", "Google integrations", "Priority support"]', true),
+  ('550e8400-e29b-41d4-a716-446655440002', 'Business', 'business', 29.99, 299.99, '{"transcriptionMinutes": 2000, "storageGB": 100, "meetings": 1000, "exports": 500, "aiTokens": 10000000, "teamMembers": 50}', '["Everything in Pro", "Team collaboration", "2000 transcription minutes/month", "100GB storage", "Admin dashboard", "Team management", "API access", "Custom branding", "SSO", "Priority support"]', true)
+ON CONFLICT (slug) DO NOTHING;

@@ -12,6 +12,7 @@ import { transcriptsRouter } from './routes/transcripts';
 import { integrationsRouter } from './routes/integrations';
 import { exportsRouter } from './routes/exports';
 import organizationsRouter from './routes/organizations';
+import subscriptionsRouter from './routes/subscriptions';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/transcripts', transcriptsRouter);
 app.use('/integrations', integrationsRouter);
 app.use('/exports', exportsRouter);
 app.use('/organizations', organizationsRouter);
+app.use('/billing', subscriptionsRouter);
 
 app.use(errorHandler);
 

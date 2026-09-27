@@ -139,6 +139,9 @@ export default function DashboardPage() {
               <Link href="/dashboard/organizations" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Teams
               </Link>
+              <Link href="/dashboard/billing" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Billing
+              </Link>
               <Link href="/dashboard/search" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Search
               </Link>

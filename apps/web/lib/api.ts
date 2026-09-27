@@ -259,6 +259,26 @@ export const organizationsApi = {
     api.delete<any>(`/organizations/${id}`),
 };
 
+export const billingApi = {
+  getPlans: () =>
+    api.get<any[]>('/billing/plans'),
+
+  getSubscription: () =>
+    api.get<any>('/billing/subscription'),
+
+  createSubscription: (data: { planId: string; provider?: string; providerSubscriptionId?: string }) =>
+    api.post<any>('/billing/subscription', data),
+
+  cancelSubscription: () =>
+    api.post<any>('/billing/subscription/cancel'),
+
+  recordUsage: (data: { resourceType: string; amount: number; unit?: string; cost?: number; metadata?: any }) =>
+    api.post<any>('/billing/usage', data),
+
+  getUsage: (params?: { startDate?: string; endDate?: string }) =>
+    api.get<any[]>('/billing/usage', { params }),
+};
+
 export const actionItemsApi = {
   getByMeeting: (meetingId: string) =>
     api.get<ActionItem[]>(`/meetings/${meetingId}/action-items`),
