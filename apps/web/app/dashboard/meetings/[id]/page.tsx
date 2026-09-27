@@ -7,6 +7,7 @@ import {
   actionItemsApi,
   transcriptsApi,
   integrationsApi,
+  exportsApi,
   type Meeting,
   type ActionItem,
   type MeetingSummary,
@@ -525,7 +526,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 </button>
 
                 {showExportMenu && (
-                  <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 text-sm">
+                  <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 text-sm">
                     <button
                       onClick={() => {
                         handleDownloadFile('md');
@@ -546,12 +547,32 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                     </button>
                     <button
                       onClick={() => {
+                        const pdfUrl = exportsApi.downloadPDF(params.id);
+                        window.open(pdfUrl, '_blank');
+                        setShowExportMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
+                    >
+                      Download PDF
+                    </button>
+                    <button
+                      onClick={() => {
+                        const docxUrl = exportsApi.downloadDOCX(params.id);
+                        window.open(docxUrl, '_blank');
+                        setShowExportMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
+                    >
+                      Download DOCX
+                    </button>
+                    <button
+                      onClick={() => {
                         handlePrint();
                         setShowExportMenu(false);
                       }}
                       className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
                     >
-                      Printable Document (HTML / PDF)
+                      Printable Document (HTML)
                     </button>
                   </div>
                 )}

@@ -15,6 +15,7 @@ import {
   meetingsApi,
   actionItemsApi,
   transcriptsApi,
+  exportsApi,
   type Meeting,
   type ActionItem,
   type TranscriptSegment,
@@ -113,6 +114,25 @@ export default function MeetingDetailScreen() {
     );
   };
 
+  const handleExport = (format: 'pdf' | 'docx') => {
+    const url = format === 'pdf' ? exportsApi.downloadPDF(meetingId) : exportsApi.downloadDOCX(meetingId);
+    Alert.alert(
+      'Export Meeting',
+      `Export meeting as ${format.toUpperCase()}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Export',
+          onPress: () => {
+            // In a real app, you would use Linking.openURL to download the file
+            // For now, we'll show the URL
+            Alert.alert('Export URL', url);
+          },
+        },
+      ]
+    );
+  };
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '0 min';
     const mins = Math.floor(seconds / 60);
@@ -196,6 +216,25 @@ export default function MeetingDetailScreen() {
             <Ionicons name="mic" size={16} color="#ffffff" />
             <Text style={styles.recordButtonText}>Start Recording</Text>
           </TouchableOpacity>
+        )}
+
+        {meeting.status === 'completed' && (
+          <View style={styles.exportButtonRow}>
+            <TouchableOpacity
+              style={styles.exportButton}
+              onPress={() => handleExport('pdf')}
+            >
+              <Ionicons name="document-text" size={16} color="#ffffff" />
+              <Text style={styles.exportButtonText}>PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.exportButton, styles.exportButtonSecondary]}
+              onPress={() => handleExport('docx')}
+            >
+              <Ionicons name="document" size={16} color="#ffffff" />
+              <Text style={styles.exportButtonText}>DOCX</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -478,6 +517,29 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   recordButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  exportButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  exportButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  exportButtonSecondary: {
+    backgroundColor: '#059669',
+  },
+  exportButtonText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',

@@ -290,4 +290,16 @@ export const integrationsApi = {
     }),
 };
 
+export const exportsApi = {
+  downloadPDF: (meetingId: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    return `${apiUrl}/exports/meeting/${meetingId}/pdf`;
+  },
+
+  downloadDOCX: (meetingId: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    return `${apiUrl}/exports/meeting/${meetingId}/docx`;
+  },
+};
+
 export default api;

@@ -251,4 +251,14 @@ export const integrationsApi = {
     }),
 };
 
+export const exportsApi = {
+  downloadPDF: (meetingId: string) => {
+    return `${DEFAULT_API_URL}/exports/meeting/${meetingId}/pdf`;
+  },
+
+  downloadDOCX: (meetingId: string) => {
+    return `${DEFAULT_API_URL}/exports/meeting/${meetingId}/docx`;
+  },
+};
+
 export default api;
