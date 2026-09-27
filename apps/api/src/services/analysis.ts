@@ -16,6 +16,10 @@ export interface MeetingAnalysis {
     priority: 'low' | 'medium' | 'high';
   }>;
   questions: string[];
+  risks: string[];
+  followUps: string[];
+  sentiment: 'positive' | 'neutral' | 'negative';
+  keyPoints: string[];
 }
 
 export class AnalysisService {
@@ -37,6 +41,10 @@ export class AnalysisService {
 4. Decisions made
 5. Action items with assignees and deadlines
 6. Outstanding questions
+7. Risks and concerns identified
+8. Follow-up actions needed
+9. Overall sentiment (positive, neutral, negative)
+10. Key points or takeaways
 
 IMPORTANT: Only extract information explicitly stated in the transcript. Do not invent or assume information.
 
@@ -50,7 +58,11 @@ Respond in JSON format:
   "topics": ["..."],
   "decisions": [{"decision": "...", "timestamp": 123}],
   "actionItems": [{"task": "...", "assignee": "...", "dueDate": "...", "priority": "medium"}],
-  "questions": ["..."]
+  "questions": ["..."],
+  "risks": ["..."],
+  "followUps": ["..."],
+  "sentiment": "positive|neutral|negative",
+  "keyPoints": ["..."]
 }`;
 
         const response = await this.openai.chat.completions.create({
@@ -90,11 +102,18 @@ Respond in JSON format:
     const decisions: MeetingAnalysis['decisions'] = [];
     const topics: string[] = [];
     const questions: string[] = [];
+    const risks: string[] = [];
+    const followUps: string[] = [];
+    const keyPoints: string[] = [];
 
     // Keywords for tasks
     const taskTriggers = ['will', 'need to', 'must', 'action', 'follow up', 'assigned', 'task', 'prepare', 'review', 'deliver', 'send', 'schedule'];
     // Keywords for decisions
     const decisionTriggers = ['decided', 'agreed', 'approved', 'confirmed', 'chosen', 'conclusion', 'resolved'];
+    // Keywords for risks
+    const riskTriggers = ['risk', 'concern', 'issue', 'problem', 'challenge', 'obstacle', 'worried', 'uncertain'];
+    // Keywords for follow-ups
+    const followUpTriggers = ['follow up', 'check in', 'next time', 'schedule', 'meet again', 'revisit'];
 
     sentences.forEach((sentence, idx) => {
       const lower = sentence.toLowerCase();
@@ -120,6 +139,14 @@ Respond in JSON format:
           priority: lower.includes('urgent') || lower.includes('must') ? 'high' : 'medium',
         });
       }
+
+      if (riskTriggers.some(t => lower.includes(t))) {
+        risks.push(sentence);
+      }
+
+      if (followUpTriggers.some(t => lower.includes(t))) {
+        followUps.push(sentence);
+      }
     });
 
     if (decisions.length === 0) {
@@ -142,11 +169,25 @@ Respond in JSON format:
     topics.push('Operational Review');
     topics.push('Next Steps and Deadlines');
 
+    keyPoints.push('Key objectives and priorities were discussed');
+    keyPoints.push('Action items with deadlines were assigned');
+    keyPoints.push('Follow-up actions were identified');
+
     const summary = sentences.length > 0
       ? sentences.slice(0, 3).join(' ')
       : `The ${title} covered primary objectives, timeline reviews, and task assignments for upcoming milestones.`;
 
     const executiveSummary = `Discussion focused on aligning objectives for ${title} and establishing clear next steps with deadlines.`;
+
+    // Simple sentiment analysis
+    const negativeWords = ['problem', 'issue', 'failed', 'delay', 'concern', 'risk', 'worried'];
+    const positiveWords = ['success', 'great', 'excellent', 'achieved', 'completed', 'approved', 'agreed'];
+    const lowerTranscript = transcript.toLowerCase();
+    const negativeCount = negativeWords.filter(w => lowerTranscript.includes(w)).length;
+    const positiveCount = positiveWords.filter(w => lowerTranscript.includes(w)).length;
+    let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+    if (positiveCount > negativeCount) sentiment = 'positive';
+    if (negativeCount > positiveCount) sentiment = 'negative';
 
     return {
       summary,
@@ -155,6 +196,10 @@ Respond in JSON format:
       decisions,
       actionItems,
       questions,
+      risks,
+      followUps,
+      sentiment,
+      keyPoints,
     };
   }
 

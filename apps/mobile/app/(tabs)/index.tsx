@@ -44,7 +44,7 @@ export default function HomeScreen() {
         setProfile({
           user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
           profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
-        } as UserProfileResponse);
+        } as unknown as UserProfileResponse);
       }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
@@ -52,7 +52,7 @@ export default function HomeScreen() {
       setProfile({
         user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
         profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
-      } as UserProfileResponse);
+      } as unknown as UserProfileResponse);
     } finally {
       setLoading(false);
       setRefreshing(false);

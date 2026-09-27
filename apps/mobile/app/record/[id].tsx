@@ -74,7 +74,7 @@ export default function RecordScreen() {
       if (!pending) return;
 
       const uploads = JSON.parse(pending);
-      const successful = [];
+      const successful: any[] = [];
 
       for (const upload of uploads) {
         try {
@@ -111,7 +111,7 @@ export default function RecordScreen() {
       }
 
       // Remove successful uploads from pending list
-      const remaining = uploads.filter(u => !successful.includes(u));
+      const remaining = uploads.filter((u: any) => !successful.includes(u));
       await AsyncStorage.setItem('pending_uploads', JSON.stringify(remaining));
       setPendingUploads(remaining.length);
     } catch (error) {

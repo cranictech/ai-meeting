@@ -203,6 +203,12 @@ export const meetingsApi = {
   getDecisions: (id: string) =>
     api.get<MeetingDecision[]>(`/meetings/${id}/decisions`),
 
+  getRisks: (id: string) =>
+    api.get<any[]>(`/meetings/${id}/risks`),
+
+  getFollowUps: (id: string) =>
+    api.get<any[]>(`/meetings/${id}/followups`),
+
   translate: (id: string, targetLanguage: string, options?: { translateSegments?: boolean; translateDecisions?: boolean; translateActionItems?: boolean }) =>
     api.post<{
       targetLanguage: string;

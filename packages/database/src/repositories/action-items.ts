@@ -110,10 +110,10 @@ export class ActionItemRepository {
     );
   }
 
-  async createSummary(meetingId: string, summary: string, executiveSummary?: string): Promise<MeetingSummary> {
+  async createSummary(meetingId: string, summary: string, executiveSummary?: string, sentiment?: string, keyPoints?: string[]): Promise<MeetingSummary> {
     const result = await this.db.queryOne<MeetingSummary>(
-      'INSERT INTO meeting_summaries (meeting_id, summary, executive_summary) VALUES ($1, $2, $3) RETURNING *',
-      [meetingId, summary, executiveSummary]
+      'INSERT INTO meeting_summaries (meeting_id, summary, executive_summary, sentiment, key_points) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [meetingId, summary, executiveSummary, sentiment, keyPoints]
     );
     if (!result) throw new Error('Failed to create summary');
     return result;
@@ -138,6 +138,20 @@ export class ActionItemRepository {
   async getDecisionsByMeeting(meetingId: string): Promise<MeetingDecision[]> {
     return this.db.query<MeetingDecision>(
       'SELECT * FROM meeting_decisions WHERE meeting_id = $1 ORDER BY created_at ASC',
+      [meetingId]
+    );
+  }
+
+  async getRisksByMeeting(meetingId: string): Promise<any[]> {
+    return this.db.query(
+      'SELECT * FROM meeting_risks WHERE meeting_id = $1 ORDER BY created_at ASC',
+      [meetingId]
+    );
+  }
+
+  async getFollowUpsByMeeting(meetingId: string): Promise<any[]> {
+    return this.db.query(
+      'SELECT * FROM meeting_followups WHERE meeting_id = $1 ORDER BY created_at ASC',
       [meetingId]
     );
   }

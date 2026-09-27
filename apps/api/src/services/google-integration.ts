@@ -62,7 +62,7 @@ export class GoogleIntegrationService {
       throw new Error('Google account not connected');
     }
 
-    const drive = google.drive({ version: 'v3', auth: client });
+    const drive = google.drive({ version: 'v3', auth: client as any });
 
     try {
       // Create file metadata
@@ -113,7 +113,7 @@ export class GoogleIntegrationService {
       throw new Error('Google account not connected');
     }
 
-    const gmail = google.gmail({ version: 'v1', auth: client });
+    const gmail = google.gmail({ version: 'v1', auth: client as any });
 
     try {
       // Create email content
@@ -169,7 +169,7 @@ export class GoogleIntegrationService {
       throw new Error('Google account not connected');
     }
 
-    const calendar = google.calendar({ version: 'v3', auth: client });
+    const calendar = google.calendar({ version: 'v3', auth: client as any });
 
     try {
       const event = {
@@ -214,7 +214,7 @@ export class GoogleIntegrationService {
       throw new Error('Google account not connected');
     }
 
-    const calendar = google.calendar({ version: 'v3', auth: client });
+    const calendar = google.calendar({ version: 'v3', auth: client as any });
 
     try {
       // Get existing event

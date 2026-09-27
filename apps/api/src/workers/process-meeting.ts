@@ -142,7 +142,9 @@ export async function processMeeting(meetingId: string): Promise<void> {
     await actionItemRepo.createSummary(
       meetingId,
       analysis.summary,
-      analysis.executiveSummary
+      analysis.executiveSummary,
+      analysis.sentiment,
+      analysis.keyPoints
     );
 
     // 8. Save decisions
@@ -154,7 +156,23 @@ export async function processMeeting(meetingId: string): Promise<void> {
       );
     }
 
-    // 9. Save action items
+    // 9. Save risks
+    for (const risk of analysis.risks) {
+      await db.query(
+        'INSERT INTO meeting_risks (meeting_id, risk) VALUES ($1, $2)',
+        [meetingId, risk]
+      );
+    }
+
+    // 10. Save follow-ups
+    for (const followUp of analysis.followUps) {
+      await db.query(
+        'INSERT INTO meeting_followups (meeting_id, follow_up) VALUES ($1, $2)',
+        [meetingId, followUp]
+      );
+    }
+
+    // 11. Save action items
     for (const item of analysis.actionItems) {
       await actionItemRepo.create(meetingId, {
         task: item.task,
@@ -165,7 +183,7 @@ export async function processMeeting(meetingId: string): Promise<void> {
       });
     }
 
-    // 10. Update Search Index
+    // 12. Update Search Index
     try {
       const combinedSearchText = [
         meeting.title,
@@ -174,6 +192,8 @@ export async function processMeeting(meetingId: string): Promise<void> {
         analysis.executiveSummary,
         analysis.decisions.map(d => d.decision).join(' '),
         analysis.actionItems.map(a => a.task).join(' '),
+        analysis.risks.join(' '),
+        analysis.followUps.join(' '),
         transcriptionResult.text,
       ].filter(Boolean).join(' ');
 
@@ -187,10 +207,10 @@ export async function processMeeting(meetingId: string): Promise<void> {
       console.warn('Failed to update search index:', searchErr);
     }
 
-    // 11. Update meeting status
+    // 13. Update meeting status
     await meetingRepo.updateStatus(meetingId, 'completed');
 
-    // 12. Notify user
+    // 14. Notify user
     try {
       await notificationService.notifyMeetingComplete(
         meeting.user_id,

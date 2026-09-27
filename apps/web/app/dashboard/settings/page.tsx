@@ -338,7 +338,7 @@ export default function SettingsPage() {
                   </div>
                   {!googleStatus.canUseDrive && (
                     <button
-                      onClick={() => handleConnectGoogle('drive')}
+                      onClick={() => handleConnectGoogle('full')}
                       className="text-xs text-blue-600 hover:underline"
                     >
                       Enable
@@ -353,7 +353,7 @@ export default function SettingsPage() {
                   </div>
                   {!googleStatus.canUseGmail && (
                     <button
-                      onClick={() => handleConnectGoogle('gmail')}
+                      onClick={() => handleConnectGoogle('full')}
                       className="text-xs text-blue-600 hover:underline"
                     >
                       Enable
@@ -368,7 +368,7 @@ export default function SettingsPage() {
                   </div>
                   {!googleStatus.canUseCalendar && (
                     <button
-                      onClick={() => handleConnectGoogle('calendar')}
+                      onClick={() => handleConnectGoogle('full')}
                       className="text-xs text-blue-600 hover:underline"
                     >
                       Enable

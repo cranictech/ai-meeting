@@ -195,6 +195,48 @@ router.get('/:id/decisions', async (req: AuthRequest, res, next) => {
   }
 });
 
+router.get('/:id/risks', async (req: AuthRequest, res, next) => {
+  try {
+    const meeting = await meetingRepo.findById(req.params.id);
+    if (!meeting) {
+      throw new AppError(404, 'Meeting not found');
+    }
+    if (meeting.user_id !== req.userId) {
+      throw new AppError(403, 'Access denied');
+    }
+
+    const risks = await db.query(
+      'SELECT * FROM meeting_risks WHERE meeting_id = $1 ORDER BY created_at ASC',
+      [req.params.id]
+    );
+
+    res.json(risks);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/:id/followups', async (req: AuthRequest, res, next) => {
+  try {
+    const meeting = await meetingRepo.findById(req.params.id);
+    if (!meeting) {
+      throw new AppError(404, 'Meeting not found');
+    }
+    if (meeting.user_id !== req.userId) {
+      throw new AppError(403, 'Access denied');
+    }
+
+    const followUps = await db.query(
+      'SELECT * FROM meeting_followups WHERE meeting_id = $1 ORDER BY created_at ASC',
+      [req.params.id]
+    );
+
+    res.json(followUps);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.delete('/:id', async (req: AuthRequest, res, next) => {
   try {
     const meeting = await meetingRepo.findById(req.params.id);

@@ -29,9 +29,11 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [summary, setSummary] = useState<MeetingSummary | null>(null);
   const [decisions, setDecisions] = useState<MeetingDecision[]>([]);
+  const [risks, setRisks] = useState<any[]>([]);
+  const [followUps, setFollowUps] = useState<any[]>([]);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
-  const [activeTab, setActiveTab] = useState<'notes' | 'actions' | 'decisions' | 'transcript'>('notes');
+  const [activeTab, setActiveTab] = useState<'notes' | 'actions' | 'decisions' | 'risks' | 'followups' | 'transcript'>('notes');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -55,12 +57,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   // Translation State
   const [selectedLang, setSelectedLang] = useState('sw');
   const [translating, setTranslating] = useState(false);
-  const [translatedData, setTranslatedData] = useState<{
-    targetLanguage: string;
-    originalSummary: string;
-    translatedSummary: string;
-    translatedExecutiveSummary?: string;
-  } | null>(null);
+  const [translatedData, setTranslatedData] = useState<any | null>(null);
 
   // Email Share Modal State
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -78,10 +75,12 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const loadAllMeetingData = async () => {
     try {
       setLoading(true);
-      const [meetingRes, summaryRes, decisionsRes, actionsRes, segmentsRes, googleStatusRes] = await Promise.all([
+      const [meetingRes, summaryRes, decisionsRes, risksRes, followUpsRes, actionsRes, segmentsRes, googleStatusRes] = await Promise.all([
         meetingsApi.get(params.id),
         meetingsApi.getSummary(params.id).catch(() => ({ data: {} })),
         meetingsApi.getDecisions(params.id).catch(() => ({ data: [] })),
+        meetingsApi.getRisks(params.id).catch(() => ({ data: [] })),
+        meetingsApi.getFollowUps(params.id).catch(() => ({ data: [] })),
         actionItemsApi.getByMeeting(params.id).catch(() => ({ data: [] })),
         transcriptsApi.getSegments(params.id).catch(() => ({ data: [] })),
         integrationsApi.getGoogleStatus().catch(() => ({ data: { connected: false } })),
@@ -92,6 +91,8 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       setEditType(meetingRes.data.meeting_type || 'business');
       setSummary(summaryRes.data || null);
       setDecisions(decisionsRes.data || []);
+      setRisks(risksRes.data || []);
+      setFollowUps(followUpsRes.data || []);
       setActionItems(actionsRes.data || []);
       setSegments(segmentsRes.data || []);
       setGoogleStatus(googleStatusRes.data);
@@ -138,7 +139,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
         translateDecisions: true,
         translateActionItems: true,
       });
-      setTranslatedData(res.data);
+      setTranslatedData(res.data as any);
     } catch (err) {
       alert('Translation failed. Please verify translation service configuration.');
     } finally {
@@ -939,6 +940,26 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
             Decisions ({decisions.length})
           </button>
           <button
+            onClick={() => setActiveTab('risks')}
+            className={`pb-3 px-4 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+              activeTab === 'risks'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Risks ({risks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('followups')}
+            className={`pb-3 px-4 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+              activeTab === 'followups'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Follow-ups ({followUps.length})
+          </button>
+          <button
             onClick={() => setActiveTab('transcript')}
             className={`pb-3 px-4 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
               activeTab === 'transcript'
@@ -1012,6 +1033,34 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 <p className="text-blue-950 font-medium text-sm leading-relaxed">
                   {summary.executive_summary}
                 </p>
+              </div>
+            )}
+
+            {(summary as any)?.sentiment && (
+              <div className="flex items-center gap-2 bg-gray-50 border rounded-xl p-3 px-4 shadow-sm">
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Overall Sentiment:</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                  (summary as any).sentiment === 'positive'
+                    ? 'bg-green-100 text-green-800'
+                    : (summary as any).sentiment === 'negative'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-200 text-gray-800'
+                }`}>
+                  {(summary as any).sentiment}
+                </span>
+              </div>
+            )}
+
+            {(summary as any)?.key_points && (summary as any).key_points.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-2 shadow-sm">
+                <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                  Key Points & Takeaways
+                </h4>
+                <ul className="list-disc list-inside space-y-1.5 text-sm text-amber-950">
+                  {(summary as any).key_points.map((point: string, idx: number) => (
+                    <li key={idx} className="leading-relaxed">{point}</li>
+                  ))}
+                </ul>
               </div>
             )}
 

@@ -31,7 +31,7 @@ export default function BillingPage() {
         billingApi.getSubscription().catch(() => null),
       ]);
       setPlans(plansRes.data || []);
-      setSubscription(subRes.data);
+      setSubscription(subRes?.data || null);
     } catch (err) {
       console.error('Failed to load billing data:', err);
     } finally {

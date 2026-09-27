@@ -179,6 +179,8 @@ CREATE TABLE meeting_summaries (
   meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
   summary TEXT NOT NULL,
   executive_summary TEXT,
+  sentiment VARCHAR(20),
+  key_points TEXT[],
   version INTEGER DEFAULT 1,
   model_version VARCHAR(50),
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -199,6 +201,25 @@ CREATE TABLE meeting_decisions (
   context TEXT,
   source_timestamp FLOAT,
   confidence VARCHAR(20) DEFAULT 'high',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE meeting_risks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+  risk TEXT NOT NULL,
+  mitigation TEXT,
+  severity VARCHAR(20) DEFAULT 'medium',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE meeting_followups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+  follow_up TEXT NOT NULL,
+  due_date DATE,
+  assignee VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
