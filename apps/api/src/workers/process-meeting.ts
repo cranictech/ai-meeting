@@ -106,6 +106,9 @@ export async function processMeeting(meetingId: string): Promise<void> {
     // Clean old segments if re-processing
     await db.query('DELETE FROM transcript_segments WHERE transcript_id = $1', [transcript.id]);
 
+    const detectedLanguage = transcriptionResult.language || 'en';
+    const uniqueLanguages = new Set([detectedLanguage]);
+
     for (let i = 0; i < transcriptionResult.segments.length; i++) {
       const segment = transcriptionResult.segments[i];
       await transcriptRepo.createSegment({
@@ -114,11 +117,17 @@ export async function processMeeting(meetingId: string): Promise<void> {
         start_time: segment.start,
         end_time: segment.end,
         text: segment.text,
-        language: transcriptionResult.language || 'en',
+        language: detectedLanguage,
         speaker_id: segment.speaker ? speakerMap[segment.speaker] : undefined,
         confidence: 0.95,
       });
     }
+
+    // Update transcript language
+    await db.query('UPDATE transcripts SET language = $1 WHERE id = $2', [detectedLanguage, transcript.id]);
+
+    // Update meeting with detected languages
+    await db.query('UPDATE meetings SET detected_languages = $1 WHERE id = $2', [Array.from(uniqueLanguages), meetingId]);
 
     await transcriptRepo.updateStatus(transcript.id, 'completed');
 

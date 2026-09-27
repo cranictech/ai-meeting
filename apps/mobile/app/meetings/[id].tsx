@@ -22,6 +22,16 @@ import {
   type MeetingSummary,
 } from '../../lib/api';
 
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'sw', label: 'Swahili' },
+  { code: 'lg', label: 'Luganda' },
+  { code: 'fr', label: 'French' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'de', label: 'German' },
+  { code: 'ar', label: 'Arabic' },
+];
+
 type TabType = 'summary' | 'actionItems' | 'transcript';
 
 export default function MeetingDetailScreen() {
@@ -37,6 +47,10 @@ export default function MeetingDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [newTaskText, setNewTaskText] = useState('');
   const [addingTask, setAddingTask] = useState(false);
+  const [showTranslationModal, setShowTranslationModal] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('sw');
+  const [translating, setTranslating] = useState(false);
+  const [translatedData, setTranslatedData] = useState<any>(null);
 
   const loadAllDetails = useCallback(async () => {
     try {
@@ -124,13 +138,28 @@ export default function MeetingDetailScreen() {
         {
           text: 'Export',
           onPress: () => {
-            // In a real app, you would use Linking.openURL to download the file
-            // For now, we'll show the URL
             Alert.alert('Export URL', url);
           },
         },
       ]
     );
+  };
+
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const res = await meetingsApi.translate(meetingId, selectedLanguage, {
+        translateSegments: true,
+        translateDecisions: true,
+        translateActionItems: true,
+      });
+      setTranslatedData(res.data);
+      setShowTranslationModal(false);
+    } catch (err) {
+      Alert.alert('Error', 'Translation failed. Please verify translation service configuration.');
+    } finally {
+      setTranslating(false);
+    }
   };
 
   const formatDuration = (seconds?: number) => {
@@ -200,10 +229,16 @@ export default function MeetingDetailScreen() {
               <Text style={styles.metaText}>{meeting.meeting_type}</Text>
             </View>
           )}
-          {meeting.output_language && (
+          {meeting.detected_languages && meeting.detected_languages.length > 0 && (
             <View style={styles.metaItem}>
-              <Ionicons name="globe-outline" size={14} color="#6b7280" />
-              <Text style={styles.metaText}>{meeting.output_language.toUpperCase()}</Text>
+              <Ionicons name="language-outline" size={14} color="#6b7280" />
+              <Text style={styles.metaText}>{meeting.detected_languages.map((l: string) => l.toUpperCase()).join(', ')}</Text>
+            </View>
+          )}
+          {meeting.output_language && meeting.output_language !== 'en' && (
+            <View style={styles.metaItem}>
+              <Ionicons name="globe-outline" size={14} color="#2563eb" />
+              <Text style={[styles.metaText, styles.metaTextAccent]}>{meeting.output_language.toUpperCase()}</Text>
             </View>
           )}
         </View>
@@ -233,6 +268,13 @@ export default function MeetingDetailScreen() {
             >
               <Ionicons name="document" size={16} color="#ffffff" />
               <Text style={styles.exportButtonText}>DOCX</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.exportButton, styles.exportButtonTertiary]}
+              onPress={() => setShowTranslationModal(true)}
+            >
+              <Ionicons name="language" size={16} color="#ffffff" />
+              <Text style={styles.exportButtonText}>Translate</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -445,6 +487,47 @@ export default function MeetingDetailScreen() {
           <Text style={styles.deleteButtonText}>Delete Meeting</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Translation Modal */}
+      {showTranslationModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Translate Meeting</Text>
+              <TouchableOpacity onPress={() => setShowTranslationModal(false)}>
+                <Ionicons name="close" size={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.languageList}>
+              {LANGUAGES.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[styles.languageItem, selectedLanguage === lang.code && styles.languageItemSelected]}
+                  onPress={() => setSelectedLanguage(lang.code)}
+                >
+                  <Text style={[styles.languageText, selectedLanguage === lang.code && styles.languageTextSelected]}>
+                    {lang.label}
+                  </Text>
+                  {selectedLanguage === lang.code && (
+                    <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={styles.translateButton}
+              onPress={handleTranslate}
+              disabled={translating}
+            >
+              {translating ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.translateButtonText}>Translate</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -506,6 +589,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
   },
+  metaTextAccent: {
+    color: '#2563eb',
+    fontWeight: '600',
+  },
   recordButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,6 +625,9 @@ const styles = StyleSheet.create({
   },
   exportButtonSecondary: {
     backgroundColor: '#059669',
+  },
+  exportButtonTertiary: {
+    backgroundColor: '#7c3aed',
   },
   exportButtonText: {
     color: '#ffffff',
@@ -766,6 +856,73 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     fontSize: 13,
     color: '#dc2626',
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 320,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  languageList: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  languageItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  languageItemSelected: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#2563eb',
+  },
+  languageText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  languageTextSelected: {
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  translateButton: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  translateButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

@@ -66,6 +66,7 @@ export interface Meeting {
   status: 'draft' | 'recording' | 'processing' | 'completed' | 'failed';
   meeting_type?: string;
   output_language?: string;
+  detected_languages?: string[];
   duration_seconds?: number;
   audio_url?: string;
   started_at?: string;
@@ -165,6 +166,9 @@ export const meetingsApi = {
 
   getActionItems: (id: string) =>
     api.get<ActionItem[]>(`/action-items/meeting/${id}`),
+
+  translate: (id: string, targetLanguage: string, options?: { translateSegments?: boolean; translateDecisions?: boolean; translateActionItems?: boolean }) =>
+    api.post(`/meetings/${id}/translate`, { targetLanguage, ...options }),
 };
 
 export const actionItemsApi = {

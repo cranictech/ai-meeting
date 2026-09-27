@@ -244,29 +244,90 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
     }
 
     const targetLanguage = req.body.targetLanguage || 'en';
+    const { translateSegments, translateDecisions, translateActionItems } = req.body;
+
+    const { AnalysisService } = await import('../services/analysis');
+    const ai = new AnalysisService();
+
+    const result: any = {
+      targetLanguage,
+    };
+
+    // Translate summary if requested
     const summary = await db.queryOne(
       'SELECT * FROM meeting_summaries WHERE meeting_id = $1 ORDER BY created_at DESC LIMIT 1',
       [req.params.id]
     );
 
-    if (!summary) {
-      return res.json({ message: 'No summary available to translate' });
+    if (summary) {
+      result.originalSummary = summary.summary_text;
+      result.translatedSummary = await ai.translate(summary.summary_text, targetLanguage);
+      if (summary.executive_summary) {
+        result.translatedExecutiveSummary = await ai.translate(summary.executive_summary, targetLanguage);
+      }
     }
 
-    const { AnalysisService } = await import('../services/analysis');
-    const ai = new AnalysisService();
+    // Translate transcript segments if requested
+    if (translateSegments) {
+      const segments = await db.query(
+        'SELECT id, text FROM transcript_segments WHERE transcript_id IN (SELECT id FROM transcripts WHERE meeting_id = $1) ORDER BY segment_index',
+        [req.params.id]
+      );
 
-    const translatedText = await ai.translate(summary.summary_text, targetLanguage);
-    const translatedExec = summary.executive_summary
-      ? await ai.translate(summary.executive_summary, targetLanguage)
-      : undefined;
+      result.translatedSegments = [];
+      for (const segment of segments) {
+        const translatedText = await ai.translate(segment.text, targetLanguage);
+        result.translatedSegments.push({
+          id: segment.id,
+          originalText: segment.text,
+          translatedText,
+        });
 
-    res.json({
-      targetLanguage,
-      originalSummary: summary.summary_text,
-      translatedSummary: translatedText,
-      translatedExecutiveSummary: translatedExec,
-    });
+        // Update database with translated text
+        await db.query(
+          'UPDATE transcript_segments SET translated_text = $1 WHERE id = $2',
+          [translatedText, segment.id]
+        );
+      }
+    }
+
+    // Translate decisions if requested
+    if (translateDecisions) {
+      const decisions = await db.query(
+        'SELECT id, decision FROM decisions WHERE meeting_id = $1',
+        [req.params.id]
+      );
+
+      result.translatedDecisions = [];
+      for (const decision of decisions) {
+        const translatedDecision = await ai.translate(decision.decision, targetLanguage);
+        result.translatedDecisions.push({
+          id: decision.id,
+          originalDecision: decision.decision,
+          translatedDecision,
+        });
+      }
+    }
+
+    // Translate action items if requested
+    if (translateActionItems) {
+      const actionItems = await db.query(
+        'SELECT id, task FROM action_items WHERE meeting_id = $1',
+        [req.params.id]
+      );
+
+      result.translatedActionItems = [];
+      for (const item of actionItems) {
+        const translatedTask = await ai.translate(item.task, targetLanguage);
+        result.translatedActionItems.push({
+          id: item.id,
+          originalTask: item.task,
+          translatedTask,
+        });
+      }
+    }
+
+    res.json(result);
   } catch (error) {
     next(error);
   }

@@ -198,13 +198,16 @@ export const meetingsApi = {
   getDecisions: (id: string) =>
     api.get<MeetingDecision[]>(`/meetings/${id}/decisions`),
 
-  translate: (id: string, targetLanguage: string) =>
+  translate: (id: string, targetLanguage: string, options?: { translateSegments?: boolean; translateDecisions?: boolean; translateActionItems?: boolean }) =>
     api.post<{
       targetLanguage: string;
-      originalSummary: string;
-      translatedSummary: string;
+      originalSummary?: string;
+      translatedSummary?: string;
       translatedExecutiveSummary?: string;
-    }>(`/meetings/${id}/translate`, { targetLanguage }),
+      translatedSegments?: Array<{ id: string; originalText: string; translatedText: string }>;
+      translatedDecisions?: Array<{ id: string; originalDecision: string; translatedDecision: string }>;
+      translatedActionItems?: Array<{ id: string; originalTask: string; translatedTask: string }>;
+    }>(`/meetings/${id}/translate`, { targetLanguage, ...options }),
 
   shareEmail: (id: string, data: { recipients: string[]; subject?: string; message?: string }) =>
     api.post<{ success: boolean; recipients: string[]; meetingTitle: string; sentAt: string }>(

@@ -133,7 +133,11 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const handleTranslate = async () => {
     setTranslating(true);
     try {
-      const res = await meetingsApi.translate(params.id, selectedLang);
+      const res = await meetingsApi.translate(params.id, selectedLang, {
+        translateSegments: true,
+        translateDecisions: true,
+        translateActionItems: true,
+      });
       setTranslatedData(res.data);
     } catch (err) {
       alert('Translation failed. Please verify translation service configuration.');
@@ -736,6 +740,22 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 <span className="text-gray-600 font-medium capitalize">
                   {meeting.meeting_type || 'General'}
                 </span>
+                {meeting.detected_languages && meeting.detected_languages.length > 0 && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-600 font-medium">
+                      {meeting.detected_languages.map((l: string) => l.toUpperCase()).join(', ')}
+                    </span>
+                  </>
+                )}
+                {meeting.output_language && meeting.output_language !== 'en' && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-blue-600 font-medium">
+                      Notes: {meeting.output_language.toUpperCase()}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1109,6 +1129,11 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                       </span>
                     </div>
                     <p className="text-sm text-gray-800 leading-relaxed">{seg.text}</p>
+                    {seg.translated_text && (
+                      <p className="text-sm text-gray-600 leading-relaxed mt-2 italic">
+                        {seg.translated_text}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
