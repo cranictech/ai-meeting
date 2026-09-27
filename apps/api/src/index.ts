@@ -11,6 +11,7 @@ import { uploadRouter } from './routes/upload';
 import { transcriptsRouter } from './routes/transcripts';
 import { integrationsRouter } from './routes/integrations';
 import { exportsRouter } from './routes/exports';
+import organizationsRouter from './routes/organizations';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/upload', uploadRouter);
 app.use('/transcripts', transcriptsRouter);
 app.use('/integrations', integrationsRouter);
 app.use('/exports', exportsRouter);
+app.use('/organizations', organizationsRouter);
 
 app.use(errorHandler);
 

@@ -52,6 +52,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="organizations"
+        options={{
+          title: 'Teams',
+          headerTitle: 'Teams & Organizations',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="business-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

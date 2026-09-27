@@ -272,4 +272,30 @@ export const exportsApi = {
   },
 };
 
+export const organizationsApi = {
+  list: () =>
+    api.get<any[]>('/organizations'),
+
+  create: (data: { name: string; slug: string }) =>
+    api.post<any>('/organizations', data),
+
+  get: (id: string) =>
+    api.get<any>(`/organizations/${id}`),
+
+  addMember: (id: string, data: { userId: string; role?: string }) =>
+    api.post<any>(`/organizations/${id}/members`, data),
+
+  removeMember: (id: string, userId: string) =>
+    api.delete<any>(`/organizations/${id}/members/${userId}`),
+
+  updateMemberRole: (id: string, userId: string, role: string) =>
+    api.patch<any>(`/organizations/${id}/members/${userId}/role`, { role }),
+
+  updateSettings: (id: string, settings: any) =>
+    api.patch<any>(`/organizations/${id}`, { settings }),
+
+  delete: (id: string) =>
+    api.delete<any>(`/organizations/${id}`),
+};
+
 export default api;
