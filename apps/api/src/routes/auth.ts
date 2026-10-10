@@ -130,10 +130,8 @@ router.get('/me', authenticate, async (req: AuthRequest, res, next) => {
 router.patch('/profile', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const data = updateProfileSchema.parse(req.body);
-    console.log('Profile update data:', data);
 
     const profile = await userRepo.getProfile(req.userId!);
-    console.log('Existing profile:', profile);
 
     if (!profile) {
       // Create profile if it doesn't exist
@@ -158,7 +156,6 @@ router.patch('/profile', authenticate, async (req: AuthRequest, res, next) => {
       if (data.time_format !== undefined) updateData.time_format = data.time_format;
       if (data.use_case !== undefined) updateData.use_case = data.use_case;
 
-      console.log('Update data:', updateData);
       await userRepo.updateProfile(req.userId!, updateData);
     }
 

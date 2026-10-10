@@ -1,0 +1,46 @@
+# Meeti — production stack: Postgres + API with a persistent uploads volume.
+# Usage:  docker compose -f docker-compose.prod.yml up -d --build
+# Secrets live in apps/api/.env on the server (that file is gitignored).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: meeting_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Auto-creates tables on first boot (only when pgdata is empty)
+      - ./packages/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d meeting_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - apps/api/.env
+    environment:
+      # Override the localhost DB host so the container talks to the postgres service
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist recorded audio so transcription can read it back
+      - uploads:/repo/uploads
+
+volumes:
+  pgdata:
+  uploads:
