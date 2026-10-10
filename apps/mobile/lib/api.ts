@@ -190,10 +190,10 @@ export const authApi = {
     api.post<AuthResponse>('/auth/login', { email, password }),
 
   getProfile: () =>
-    api.get<UserProfileResponse>('/auth/profile'),
+    api.get<UserProfileResponse>('/auth/me'),
 
   updateProfile: (profile: Partial<UserProfile>) =>
-    api.put<UserProfileResponse>('/auth/profile', profile),
+    api.patch<{ profile: UserProfile }>('/auth/profile', profile),
 
   logout: () =>
     api.post('/auth/logout'),

@@ -4,9 +4,8 @@ node_modules
 .turbo
 **/.turbo
 .next
-dist
-**/dist
-*.tsbuildinfo
+# NOTE: dist is intentionally NOT ignored — the runtime-only Dockerfile ships the
+# prebuilt apps/api/dist and packages/database/dist (compiled outside the image).
 .env
 **/.env
 **/.env.local

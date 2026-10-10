@@ -1,0 +1,9 @@
+# Meeti — automatic HTTPS reverse proxy.
+# Caddy obtains + renews a Let's Encrypt certificate for this hostname and
+# forwards traffic to the API container on the shared Docker network.
+# Requires the DNS A record for api.meeti.org.uk to point at the server's
+# Elastic IP (set to "DNS only / grey cloud" in Cloudflare so ACME validates).
+
+api.meeti.org.uk {
+	reverse_proxy api:3000
+}

@@ -41,6 +41,23 @@ services:
       # Persist recorded audio so transcription can read it back
       - uploads:/repo/uploads
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Caddyfile: automatic HTTPS (Let's Encrypt) for api.meeti.org.uk -> api:3000
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Persist issued certs + config across restarts
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   pgdata:
   uploads:
+  caddy_data:
+  caddy_config:

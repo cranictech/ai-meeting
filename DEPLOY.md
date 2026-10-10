@@ -1,110 +1,93 @@
-# Deploying Meeti to AWS (Lightsail / EC2)
+# Deploying Meeti to AWS EC2
 
-This runs the whole backend (API + Postgres + audio uploads) in Docker on one
-small AWS server. Because the server has a **persistent disk**, the current
-local-storage transcription pipeline works unchanged — no code edits required.
+Backend (API + Postgres + audio uploads) in Docker on one small AWS server with
+a persistent disk, so the local-storage transcription pipeline works unchanged.
 
-## 0. Prerequisites
-- An AWS account. New accounts get a **12-month free tier** (EC2 `t3.micro` is free).
-- The repo pushed to GitHub: `ssenkula-rivan/ai-meeting`.
-- Your real secrets ready: `OPENAI_API_KEY`, Resend `SMTP_PASSWORD`, a strong `JWT_SECRET`.
+> Status: deployed and verified live on a free-tier t3.micro (Ubuntu 22.04,
+> us-east-1). /health returns ok; register/login/auth-me work end-to-end.
 
----
+## Why the build is runtime-only
 
-## 1. Create the server
+The target is a 1 GB box. Compiling the API with tsc inside the container
+exceeds RAM and aborts (SIGABRT, exit 134) even with swap. So the Dockerfile
+does NOT run tsc: compile TypeScript locally, copy the built dist into the
+build context, and the image only runs npm ci --omit=dev and starts
+apps/api/dist/index.js. Never ship your laptop's node_modules (bcrypt is native).
 
-### Option A — Lightsail (simplest, fixed ~$3.5–5/mo)
-1. AWS Console → **Lightsail** → **Create instance** → platform **Linux/Unix**, image **Ubuntu 22.04 LTS**.
-2. Pick the **$5/mo** bundle (or the free trial bundle).
-3. Create, then click the instance → **Connect using SSH** (browser terminal).
+## Prerequisites
 
-### Option B — EC2 (free tier `t3.micro`)
-1. EC2 → **Launch instance** → AMI **Ubuntu Server 22.04 (free tier eligible)**, type **t3.micro**.
-2. Create/download an SSH **key pair**, allow **SSH (22)** and **Custom TCP 3000** from `0.0.0.0/0` in the security group.
-3. Launch, then connect:
-   ```bash
-   ssh -i ~/Downloads/your-key.pem ubuntu@<SERVER_PUBLIC_IP>
-   ```
+- An AWS account with an IAM user that has AmazonEC2FullAccess +
+  AmazonVPCFullAccess attached (no permissions boundary).
+- AWS CLI v2 installed locally and configured (verify: aws sts get-caller-identity).
+- A local checkout of this repo with Node 20 and npm workspaces working.
 
----
+## 1. Provision the instance (once)
 
-## 2. Install Docker (run on the server)
-```bash
-sudo apt-get update
-sudo apt-get install -y docker.io docker-compose-v2 git
-sudo usermod -aG docker $USER
-newgrp docker   # apply group without logging out
-```
+Create a key pair, a security group opening 22/80/443/3000, and launch a
+free-tier t3.micro running Ubuntu 22.04 in us-east-1. Save the private key and
+chmod 400. Pick the newest Ubuntu AMI with
+reverse(sort_by(Images,&CreationDate))[0].ImageId (the max_by JMESPath form
+errors on CLI v2).
 
-## 3. Clone the repo
-```bash
-git clone https://github.com/ssenkula-rivan/ai-meeting.git
-cd ai-meeting
-```
+## 2. Install Docker + swap on the server
 
-## 4. Create the production `.env` (this file is gitignored — secrets stay on the server)
-```bash
-cp apps/api/.env.example apps/api/.env
-nano apps/api/.env
-```
-Set these values inside it:
-```
-NODE_ENV=production
-DB_HOST=postgres        # the compose service name, NOT localhost
-DB_PORT=5432
-DB_NAME=meeting_ai
-DB_USER=postgres
-DB_PASSWORD=postgres    # change for real production
-JWT_SECRET=<a long random string>
-OPENAI_API_KEY=sk-...
-STORAGE_PROVIDER=local
-SMTP_HOST=smtp.resend.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=resend
-SMTP_PASSWORD=re_...
-MAIL_FROM=onboarding@resend.dev   # or your verified domain sender
-REDIS_ENABLED=false
-```
-Generate a strong JWT secret:
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-```
+SSH in as ubuntu@PUBLIC_IP. Create a 2 GB swapfile (helps Postgres + Node
+coexist in 1 GB), then: apt-get install -y docker.io docker-compose-v2 git.
 
-## 5. Build and start the stack
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-Watch logs if anything looks off:
-```bash
-docker compose -f docker-compose.prod.yml logs -f api
-```
+## 3. Clone the repo and set environment
 
-## 6. Verify it's live
-From your laptop or the server:
-```bash
-curl http://<SERVER_PUBLIC_IP>:3000/health
-# → {"status":"ok","timestamp":"..."}
-```
+Clone the repo to ~/ai-meeting. Create apps/api/.env with: a fresh JWT_SECRET
+(openssl rand -hex 64), DB_NAME=meeting_ai, STORAGE_PROVIDER=local,
+REDIS_ENABLED=false, and your OpenAI / SMTP secrets. Do not commit this file.
 
----
+## 4. Build dist locally and ship it
 
-## 7. Point the apps at the live API
-- **Web (Next.js):** set `NEXT_PUBLIC_API_URL=http://<SERVER_PUBLIC_IP>:3000` (or your domain) and deploy to Vercel.
-- **Mobile (Expo):** on the login screen open **Server Settings** and enter `http://<SERVER_PUBLIC_IP>:3000`, then build with EAS.
+On your laptop, compile the two packages that the runtime image needs:
 
-## 8. Recommended next steps
-- **Domain + HTTPS:** put the API behind a domain with TLS (e.g. Caddy or Nginx + Let's Encrypt). Browsers require HTTPS for microphone recording, so this matters before real use.
-- **Email to any recipient:** verify a custom domain in Resend and update `MAIL_FROM`.
-- **Backups:** snapshot the server or `pg_dump` the Postgres volume periodically.
+    npm run build -w @meeti/database
+    npm run build -w @meeti/api
 
-## Updating later
-```bash
-cd ai-meeting
-git pull
-docker compose -f docker-compose.prod.yml up -d --build
-```
+Then rsync the built dist directories to the server's repo. The runtime-only
+Dockerfile expects apps/api/dist and packages/database/dist to be present in
+the build context.
 
-## Notes / honest caveats
-- The Docker build has not been executed on this machine (Docker isn't installed locally), so the **first `--build` on the server is the real test**. If it errors, paste the log and I'll fix the Dockerfile.
-- Free-tier `t3.micro` (1 GB RAM) can be tight during the Docker image build; if `npm ci` is killed, add swap or build on a larger instance.
+## 5. Build and start containers
+
+On the server:
+
+    cd ~/ai-meeting
+    docker compose -f docker-compose.prod.yml up -d --build
+
+The image build is fast (no tsc). Postgres and the API come up; the API
+listens on 0.0.0.0:3000.
+
+## 6. Verify
+
+    curl http://localhost:3000/health
+    curl -X POST http://localhost:3000/auth/register \
+      -H 'content-type: application/json' \
+      -d '{"email":"you@example.com","password":"secret123"}'
+
+Routes are mounted WITHOUT an /api prefix (/auth, /meetings, /health).
+
+## 7. HTTPS + Elastic IP (recommended next)
+
+A bare IP cannot get a Let's Encrypt certificate. Point a real domain (or a
+free DuckDNS hostname) at an Elastic IP, then run Caddy as a reverse proxy in
+front of the API on port 3000; Caddy handles automatic TLS. Allocate the
+Elastic IP only after the DNS record is ready (public IPv4 incurs a small
+hourly charge once allocated).
+
+## Updating the deployment
+
+Rebuild dist locally, rsync to the server, then
+docker compose -f docker-compose.prod.yml up -d --build. Named volumes (pgdata,
+uploads) persist data across rebuilds.
+
+## Caveats
+
+- Do not reintroduce a multi-stage / build-in-container Dockerfile on this box;
+  it OOMs at 1 GB.
+- Keep dist out of .dockerignore (the runtime image needs it).
+- The Next.js web frontend is not yet deployed; build it locally and host it on
+  the same server behind Caddy.
