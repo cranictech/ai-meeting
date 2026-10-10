@@ -89,5 +89,42 @@ uploads) persist data across rebuilds.
 - Do not reintroduce a multi-stage / build-in-container Dockerfile on this box;
   it OOMs at 1 GB.
 - Keep dist out of .dockerignore (the runtime image needs it).
-- The Next.js web frontend is not yet deployed; build it locally and host it on
-  the same server behind Caddy.
+- The Next.js web frontend is NOT hosted on this box (1 GB is too tight); it
+  runs on Cloudflare Workers via OpenNext (see below). The API is served at
+  https://api.meeti.org.uk through Caddy + Let's Encrypt (Elastic IP
+  44.214.64.190).
+
+## Web frontend (Next.js on Cloudflare Workers via OpenNext)
+
+The web app is fully client-rendered (all pages are client components; auth
+uses a Bearer token in localStorage, not cookies; data comes from
+https://api.meeti.org.uk which sends Access-Control-Allow-Origin: *). Static
+export is NOT possible because of the /dashboard/meetings/[id] dynamic routes
+(client components cannot export generateStaticParams), so the real Next.js
+server runs on Cloudflare Workers via @opennextjs/cloudflare.
+
+Version pin: Next.js 14.2.35 requires @opennextjs/cloudflare@1.15.x (1.16.0+
+dropped Next 14). wrangler is a devDependency. Config files live in apps/web:
+wrangler.jsonc, open-next.config.ts, public/_headers, .dev.vars.
+
+Build + preview locally (on the laptop, never on the 1 GB server):
+
+    cd apps/web
+    NEXT_PUBLIC_API_URL=https://api.meeti.org.uk npx opennextjs-cloudflare build
+    npx opennextjs-cloudflare preview   # serves http://localhost:8787
+
+Verified locally: / , /login , /register render 200, and the dynamic routes
+/dashboard/meetings/<id> and /dashboard/meetings/<id>/record render 200.
+
+Deploy to Cloudflare (needs a one-time Cloudflare login):
+
+    cd apps/web
+    npx wrangler login
+    NEXT_PUBLIC_API_URL=https://api.meeti.org.uk npx opennextjs-cloudflare build
+    npx opennextjs-cloudflare deploy
+
+This creates a workers.dev URL. To serve meeti.org.uk, add a custom domain for
+the meeti-web Worker (Cloudflare dashboard > Workers & Pages > meeti-web >
+Settings > Domains > Add > meeti.org.uk); Cloudflare issues TLS automatically
+because DNS is already on Cloudflare.
+
