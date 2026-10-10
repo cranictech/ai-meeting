@@ -72,7 +72,7 @@ export default function OnboardingPage() {
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to Meeting AI
+            Welcome to Meeti
           </h1>
           <p className="text-gray-600">
             {step === 1 ? "Let's get you set up" : 'Almost there!'}

@@ -86,7 +86,7 @@ export default function SearchPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <Link href="/dashboard" className="text-xl font-bold text-gray-900 tracking-tight">
-              Meeting AI
+              Meeti
             </Link>
             <div className="flex items-center gap-6">
               <Link href="/dashboard" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">

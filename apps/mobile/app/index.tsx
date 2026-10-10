@@ -35,7 +35,7 @@ export default function IndexScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Meeting AI</Text>
+      <Text style={styles.title}>Meeti</Text>
       <Text style={styles.subtitle}>Intelligent meeting notes and action items</Text>
 
       <TouchableOpacity

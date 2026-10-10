@@ -7,6 +7,7 @@ import {
   actionItemsApi,
   transcriptsApi,
   integrationsApi,
+  slackApi,
   exportsApi,
   type Meeting,
   type ActionItem,
@@ -68,6 +69,15 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const [googleStatus, setGoogleStatus] = useState<any>(null);
   const [showGoogleMenu, setShowGoogleMenu] = useState(false);
 
+  // Slack Share Modal State
+  const [showSlackModal, setShowSlackModal] = useState(false);
+  const [slackStatus, setSlackStatus] = useState<any>(null);
+  const [slackChannels, setSlackChannels] = useState<any[]>([]);
+  const [selectedSlackChannel, setSelectedSlackChannel] = useState('');
+  const [sendingSlack, setSendingSlack] = useState(false);
+  const [slackSuccess, setSlackSuccess] = useState(false);
+  const [slackError, setSlackError] = useState('');
+
   useEffect(() => {
     loadAllMeetingData();
   }, [params.id]);
@@ -75,7 +85,17 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
   const loadAllMeetingData = async () => {
     try {
       setLoading(true);
-      const [meetingRes, summaryRes, decisionsRes, risksRes, followUpsRes, actionsRes, segmentsRes, googleStatusRes] = await Promise.all([
+      const [
+        meetingRes,
+        summaryRes,
+        decisionsRes,
+        risksRes,
+        followUpsRes,
+        actionsRes,
+        segmentsRes,
+        googleStatusRes,
+        slackStatusRes,
+      ] = await Promise.all([
         meetingsApi.get(params.id),
         meetingsApi.getSummary(params.id).catch(() => ({ data: {} })),
         meetingsApi.getDecisions(params.id).catch(() => ({ data: [] })),
@@ -84,6 +104,7 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
         actionItemsApi.getByMeeting(params.id).catch(() => ({ data: [] })),
         transcriptsApi.getSegments(params.id).catch(() => ({ data: [] })),
         integrationsApi.getGoogleStatus().catch(() => ({ data: { connected: false } })),
+        slackApi.getStatus().catch(() => ({ data: { connected: false } })),
       ]);
 
       setMeeting(meetingRes.data);
@@ -96,6 +117,12 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       setActionItems(actionsRes.data || []);
       setSegments(segmentsRes.data || []);
       setGoogleStatus(googleStatusRes.data);
+      const sData: any = slackStatusRes.data;
+      setSlackStatus(sData);
+      if (sData?.connected) {
+        setSelectedSlackChannel(sData.defaultChannelId || '');
+        slackApi.listChannels().then((res) => setSlackChannels(res.data || [])).catch(() => {});
+      }
       setEmailSubject(`Meeting Notes: ${meetingRes.data.title}`);
     } catch (err: any) {
       setError('Failed to load meeting information');
@@ -221,6 +248,23 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
       alert(errorMsg);
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const handleSendToSlack = async () => {
+    setSendingSlack(true);
+    setSlackError('');
+    try {
+      await slackApi.sendMeetingNotes(params.id, selectedSlackChannel || undefined);
+      setSlackSuccess(true);
+      setTimeout(() => {
+        setShowSlackModal(false);
+        setSlackSuccess(false);
+      }, 2000);
+    } catch (err: any) {
+      setSlackError(err?.response?.data?.message || 'Failed to send notes to Slack');
+    } finally {
+      setSendingSlack(false);
     }
   };
 
@@ -463,6 +507,19 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
                 Share by Email
               </button>
 
+              <button
+                onClick={() => {
+                  if (!slackStatus?.connected) {
+                    router.push('/dashboard/integrations');
+                  } else {
+                    setShowSlackModal(true);
+                  }
+                }}
+                className="px-3 py-1.5 border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <span>#</span> Share to Slack
+              </button>
+
               <div className="relative">
                 <button
                   onClick={() => setShowGoogleMenu(!showGoogleMenu)}
@@ -594,6 +651,82 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
           </div>
         </div>
       </nav>
+
+      {/* Slack Share Modal */}
+      {showSlackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span className="text-purple-600 font-extrabold text-lg">#</span> Share Notes to Slack
+              </h2>
+              <button
+                onClick={() => {
+                  setShowSlackModal(false);
+                  setSlackError('');
+                }}
+                className="text-gray-400 hover:text-gray-600 text-sm font-medium"
+              >
+                ✕
+              </button>
+            </div>
+
+            {slackSuccess ? (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm font-semibold text-center">
+                ✓ Notes shared to Slack channel successfully!
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {slackError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-xl text-xs font-medium">
+                    {slackError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Select Slack Channel
+                  </label>
+                  <select
+                    value={selectedSlackChannel}
+                    onChange={(e) => setSelectedSlackChannel(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Default configured channel</option>
+                    {slackChannels.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        #{c.name} {c.isPrivate ? '(Private)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  This will format the meeting executive summary, key points, and pending action items with direct links into your Slack channel.
+                </p>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSlackModal(false)}
+                    className="px-4 py-2 border rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendToSlack}
+                    disabled={sendingSlack}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-semibold hover:bg-purple-700 disabled:opacity-50 transition shadow-xs"
+                  >
+                    {sendingSlack ? 'Sending...' : 'Post to Slack'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Email Share Modal */}
       {showEmailModal && (

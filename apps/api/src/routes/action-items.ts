@@ -1,12 +1,18 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Database, ActionItemRepository } from '@meeting-ai/database';
+import {
+  Database,
+  Queryable,
+  ActionItemRepository,
+  IActionItemReader,
+  IActionItemWriter,
+} from '@meeti/database';
 import { config } from '../config';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const db = new Database(config.database);
-const actionItemRepo = new ActionItemRepository(db);
+const db: Queryable = new Database(config.database);
+const actionItemRepo: IActionItemReader & IActionItemWriter = new ActionItemRepository(db);
 
 router.use(authenticate);
 

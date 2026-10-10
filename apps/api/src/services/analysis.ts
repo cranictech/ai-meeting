@@ -22,7 +22,17 @@ export interface MeetingAnalysis {
   keyPoints: string[];
 }
 
-export class AnalysisService {
+export interface MeetingAnalyzer {
+  analyzeMeeting(transcript: string, meetingType?: string, meetingTitle?: string): Promise<MeetingAnalysis>;
+}
+
+export interface TextTranslator {
+  translate(text: string, targetLanguage: string): Promise<string>;
+}
+
+export interface IAnalysisService extends MeetingAnalyzer, TextTranslator {}
+
+export class AnalysisService implements IAnalysisService {
   private openai: OpenAI | null = null;
 
   constructor() {
@@ -83,16 +93,14 @@ Respond in JSON format:
           return JSON.parse(content);
         }
       } catch (err) {
-        console.warn('OpenAI analysis error, utilizing built-in NLP analyzer:', err);
+        console.warn('Analysis provider unavailable, using local analyzer:', err);
       }
     }
 
-    // Built-in rule-based NLP analyzer
-    return this.fallbackAnalysis(transcript, meetingType, meetingTitle);
+    return this.heuristicAnalysis(transcript, meetingType, meetingTitle);
   }
 
-  private fallbackAnalysis(transcript: string, meetingType?: string, meetingTitle?: string): MeetingAnalysis {
-    const title = meetingTitle || 'Meeting';
+  private heuristicAnalysis(transcript: string, meetingType?: string, meetingTitle?: string): MeetingAnalysis {
     const sentences = transcript
       .split(/(?<=[.?!])\s+/)
       .map(s => s.trim())
@@ -115,7 +123,7 @@ Respond in JSON format:
     // Keywords for follow-ups
     const followUpTriggers = ['follow up', 'check in', 'next time', 'schedule', 'meet again', 'revisit'];
 
-    sentences.forEach((sentence, idx) => {
+    sentences.forEach((sentence) => {
       const lower = sentence.toLowerCase();
 
       if (sentence.endsWith('?')) {
@@ -125,17 +133,15 @@ Respond in JSON format:
       if (decisionTriggers.some(t => lower.includes(t))) {
         decisions.push({
           decision: sentence.replace(/^[A-Z][a-z]+ \d+:\s*/, ''),
-          timestamp: idx * 10,
         });
       } else if (taskTriggers.some(t => lower.includes(t))) {
-        let assignee = 'Team Member';
+        let assignee: string | undefined;
         if (lower.includes('speaker 1')) assignee = 'Speaker 1';
-        if (lower.includes('speaker 2')) assignee = 'Speaker 2';
+        else if (lower.includes('speaker 2')) assignee = 'Speaker 2';
 
         actionItems.push({
           task: sentence.replace(/^[A-Z][a-z]+ \d+:\s*/, ''),
           assignee,
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           priority: lower.includes('urgent') || lower.includes('must') ? 'high' : 'medium',
         });
       }
@@ -149,35 +155,13 @@ Respond in JSON format:
       }
     });
 
-    if (decisions.length === 0) {
-      decisions.push({
-        decision: `Approved project schedule and objectives for ${title}`,
-        timestamp: 0,
-      });
-    }
-
-    if (actionItems.length === 0) {
-      actionItems.push({
-        task: `Finalize meeting deliverables and share review notes for ${title}`,
-        assignee: 'Lead Organizer',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        priority: 'medium',
-      });
-    }
-
-    topics.push(`${title} Objectives`);
-    topics.push('Operational Review');
-    topics.push('Next Steps and Deadlines');
-
-    keyPoints.push('Key objectives and priorities were discussed');
-    keyPoints.push('Action items with deadlines were assigned');
-    keyPoints.push('Follow-up actions were identified');
-
     const summary = sentences.length > 0
       ? sentences.slice(0, 3).join(' ')
-      : `The ${title} covered primary objectives, timeline reviews, and task assignments for upcoming milestones.`;
+      : '';
 
-    const executiveSummary = `Discussion focused on aligning objectives for ${title} and establishing clear next steps with deadlines.`;
+    const executiveSummary = sentences.length > 0
+      ? sentences[0]
+      : '';
 
     // Simple sentiment analysis
     const negativeWords = ['problem', 'issue', 'failed', 'delay', 'concern', 'risk', 'worried'];
@@ -220,7 +204,7 @@ Respond in JSON format:
 
         return response.choices[0].message.content || text;
       } catch (err) {
-        console.warn('OpenAI translation failed:', err);
+        console.warn('Translation request failed, returning original text:', err);
       }
     }
     return text;

@@ -23,9 +23,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const devMode = typeof window !== 'undefined' ? localStorage.getItem('dev_mode') : null;
-    
-    if (!token && !devMode) {
+
+    if (!token) {
       router.push('/login');
       return;
     }
@@ -42,29 +41,12 @@ export default function DashboardPage() {
       ]);
       setMeetings(meetingsRes.data);
       setActionItems(actionsRes.data || []);
-      
-      if (profileRes) {
-        setUserProfile(profileRes.data);
-      } else {
-        // Set default profile for dev mode
-        setUserProfile({
-          user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
-          profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
-        } as UserProfileResponse);
-      }
+      setUserProfile(profileRes?.data ?? null);
     } catch (error: any) {
       console.error('Failed to load data:', error);
-      // Set default data for dev mode on error
-      setUserProfile({
-        user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
-        profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
-      } as UserProfileResponse);
       if (error?.response?.status === 401) {
-        const devMode = typeof window !== 'undefined' ? localStorage.getItem('dev_mode') : null;
-        if (!devMode) {
-          localStorage.removeItem('auth_token');
-          router.push('/login');
-        }
+        localStorage.removeItem('auth_token');
+        router.push('/login');
       }
     } finally {
       setLoading(false);
@@ -128,13 +110,19 @@ export default function DashboardPage() {
       <nav className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Meeting AI</h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Meeti</h1>
             <div className="flex items-center gap-6">
               <Link href="/dashboard/meetings" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Meetings
               </Link>
               <Link href="/dashboard/tasks" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Tasks
+              </Link>
+              <Link href="/dashboard/integrations" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Integrations
+              </Link>
+              <Link href="/dashboard/developer" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                Developer & API
               </Link>
               <Link href="/dashboard/organizations" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                 Teams

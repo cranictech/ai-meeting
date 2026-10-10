@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@meeting-ai/database'],
+  transpilePackages: ['@meeti/database'],
 };
 
 module.exports = nextConfig;

@@ -1,4 +1,4 @@
-# Meeting AI
+# Meeti
 
 An AI-powered meeting notes platform with real-time transcription, summary generation, and action item tracking.
 
@@ -94,7 +94,7 @@ cd apps/mobile && npx expo start --tunnel
 PORT=3000
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=meeting_ai
+DB_NAME=meeti
 DB_USER=postgres
 DB_PASSWORD=postgres
 REDIS_HOST=localhost

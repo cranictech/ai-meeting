@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Database } from '@meeting-ai/database';
+import { Database } from '@meeti/database';
 import { config } from '../config';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error-handler';

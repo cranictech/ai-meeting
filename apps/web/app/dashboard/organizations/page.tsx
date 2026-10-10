@@ -17,9 +17,8 @@ export default function OrganizationsPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
-    const devMode = localStorage.getItem('dev_mode');
-    
-    if (!token && !devMode) {
+
+    if (!token) {
       router.push('/login');
       return;
     }

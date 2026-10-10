@@ -1,27 +1,51 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Database, MeetingRepository } from '@meeting-ai/database';
+import {
+  Database,
+  Queryable,
+  MeetingRepository,
+  IMeetingReader,
+  IMeetingWriter,
+  IMeetingLifecycle,
+  IMeetingSearch,
+} from '@meeti/database';
 import { config } from '../config';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error-handler';
 import { queueMeeting } from '../workers/process-meeting';
+import { emailService } from '../services/email';
 
 const router = Router();
-const db = new Database(config.database);
-const meetingRepo = new MeetingRepository(db);
+const db: Queryable = new Database(config.database);
+const meetingRepo: IMeetingReader & IMeetingWriter & IMeetingLifecycle & IMeetingSearch =
+  new MeetingRepository(db);
 
 router.use(authenticate);
+
+// Conferencing platforms that join through a shareable link; recordings on
+// these platforms capture audio locally while the user attends via the link.
+const LINK_BASED_PLATFORMS = ['google-meet', 'zoom', 'microsoft-teams', 'webex'] as const;
 
 const createMeetingSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   meetingType: z.string().optional(),
   outputLanguage: z.string().optional(),
-});
+  platform: z.enum(['in-person', 'phone', 'whatsapp', 'telegram', 'other', ...LINK_BASED_PLATFORMS]).optional(),
+  meetingLink: z.string().trim().url('Enter a valid meeting link').optional().or(z.literal('')),
+}).refine(
+  (data) => !data.platform || LINK_BASED_PLATFORMS.includes(data.platform as any) || !data.meetingLink,
+  { message: 'A meeting link is not required for this platform', path: ['meetingLink'] },
+).refine(
+  (data) => !data.platform || !LINK_BASED_PLATFORMS.includes(data.platform as any) || !!data.meetingLink?.trim(),
+  { message: 'This platform requires a meeting link to join', path: ['meetingLink'] },
+);
 
 const updateMeetingSchema = z.object({
   title: z.string().optional(),
   meetingType: z.string().optional(),
   outputLanguage: z.string().optional(),
+  platform: z.enum(['in-person', 'phone', 'whatsapp', 'telegram', 'other', ...LINK_BASED_PLATFORMS]).optional(),
+  meetingLink: z.string().trim().url('Enter a valid meeting link').optional().or(z.literal('')),
 });
 
 router.post('/', async (req: AuthRequest, res, next) => {
@@ -31,6 +55,9 @@ router.post('/', async (req: AuthRequest, res, next) => {
       title: data.title,
       meeting_type: data.meetingType,
       output_language: data.outputLanguage,
+      metadata: data.platform
+        ? { platform: data.platform, meeting_link: data.meetingLink?.trim() || null }
+        : undefined,
     });
 
     res.status(201).json(meeting);
@@ -88,10 +115,18 @@ router.patch('/:id', async (req: AuthRequest, res, next) => {
     }
 
     const data = updateMeetingSchema.parse(req.body);
+    const metadata = data.platform
+      ? {
+          ...(meeting.metadata || {}),
+          platform: data.platform,
+          meeting_link: data.meetingLink?.trim() || null,
+        }
+      : undefined;
     const updated = await meetingRepo.update(req.params.id, {
       title: data.title,
       meeting_type: data.meetingType,
       output_language: data.outputLanguage,
+      metadata,
     });
 
     res.json(updated);
@@ -289,7 +324,7 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
     const { translateSegments, translateDecisions, translateActionItems } = req.body;
 
     const { AnalysisService } = await import('../services/analysis');
-    const ai = new AnalysisService();
+    const analyzer = new AnalysisService();
 
     const result: any = {
       targetLanguage,
@@ -303,9 +338,9 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
 
     if (summary) {
       result.originalSummary = summary.summary_text;
-      result.translatedSummary = await ai.translate(summary.summary_text, targetLanguage);
+      result.translatedSummary = await analyzer.translate(summary.summary_text, targetLanguage);
       if (summary.executive_summary) {
-        result.translatedExecutiveSummary = await ai.translate(summary.executive_summary, targetLanguage);
+        result.translatedExecutiveSummary = await analyzer.translate(summary.executive_summary, targetLanguage);
       }
     }
 
@@ -318,7 +353,7 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
 
       result.translatedSegments = [];
       for (const segment of segments) {
-        const translatedText = await ai.translate(segment.text, targetLanguage);
+        const translatedText = await analyzer.translate(segment.text, targetLanguage);
         result.translatedSegments.push({
           id: segment.id,
           originalText: segment.text,
@@ -342,7 +377,7 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
 
       result.translatedDecisions = [];
       for (const decision of decisions) {
-        const translatedDecision = await ai.translate(decision.decision, targetLanguage);
+        const translatedDecision = await analyzer.translate(decision.decision, targetLanguage);
         result.translatedDecisions.push({
           id: decision.id,
           originalDecision: decision.decision,
@@ -360,7 +395,7 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
 
       result.translatedActionItems = [];
       for (const item of actionItems) {
-        const translatedTask = await ai.translate(item.task, targetLanguage);
+        const translatedTask = await analyzer.translate(item.task, targetLanguage);
         result.translatedActionItems.push({
           id: item.id,
           originalTask: item.task,
@@ -391,7 +426,41 @@ router.post('/:id/share/email', async (req: AuthRequest, res, next) => {
     }
 
     // Email dispatch handler
-    console.log(`Meeting notes shared to ${recipients.join(', ')} for meeting: ${meeting.title}`);
+    if (!emailService.isConfigured()) {
+      throw new AppError(503, 'Email delivery is not configured on this server');
+    }
+
+    const [summary, actionItems] = await Promise.all([
+      db.queryOne(
+        'SELECT summary_text FROM meeting_summaries WHERE meeting_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [req.params.id]
+      ),
+      db.query(
+        'SELECT task, assignee, due_date FROM action_items WHERE meeting_id = $1 ORDER BY created_at ASC',
+        [req.params.id]
+      ),
+    ]);
+
+    const notesBody =
+      message && message.trim() ? message : summary?.summary_text || 'Meeting notes are ready for review.';
+    const actionLines = actionItems
+      .map(
+        (item: any) =>
+          `- ${item.task}${item.assignee ? ` (${item.assignee})` : ''}${item.due_date ? ` due ${item.due_date}` : ''}`
+      )
+      .join('\n');
+    const actionHtml = actionItems.length
+      ? `<h3>Action Items</h3><ul>${actionItems
+          .map((item: any) => `<li><strong>${item.task}</strong>${item.assignee ? ` - ${item.assignee}` : ''}${item.due_date ? ` (Due: ${item.due_date})` : ''}</li>`)
+          .join('')}</ul>`
+      : '';
+
+    await emailService.send({
+      to: recipients,
+      subject: subject || `Meeting notes: ${meeting.title}`,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#111827"><h2>${meeting.title}</h2><p style="color:#6b7280;font-size:14px">${new Date(meeting.created_at || Date.now()).toLocaleString()}</p><p>${notesBody.replace(/\n/g, '<br>')}</p>${actionHtml}</div>`,
+      text: `${notesBody}${actionItems.length ? `\n\nAction Items:\n${actionLines}` : ''}`,
+    });
 
     res.json({
       success: true,

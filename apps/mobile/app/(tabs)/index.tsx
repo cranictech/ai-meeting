@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   meetingsApi,
   actionItemsApi,
@@ -29,30 +30,26 @@ export default function HomeScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const [meetingsRes, actionsRes, profileRes] = await Promise.all([
+      const [profileRes, meetingsRes, actionsRes] = await Promise.all([
+        authApi.getProfile().catch((err: any) => {
+          if (err?.response?.status === 401) throw err;
+          return null;
+        }),
         meetingsApi.list().catch(() => ({ data: [] })),
         actionItemsApi.getUserItems('pending').catch(() => ({ data: [] })),
-        authApi.getProfile().catch(() => null),
       ]);
 
+      setProfile(profileRes?.data ?? null);
       setMeetings(meetingsRes.data || []);
       setActionItems(actionsRes.data || []);
-      if (profileRes) {
-        setProfile(profileRes.data);
-      } else {
-        // Set default profile for dev mode
-        setProfile({
-          user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
-          profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
-        } as unknown as UserProfileResponse);
+    } catch (err: any) {
+      console.warn('Failed to load dashboard data:', err?.message || err);
+      if (err?.response?.status === 401) {
+        await AsyncStorage.removeItem('auth_token');
+        router.replace('/login');
+        return;
       }
-    } catch (err) {
-      console.warn('Dashboard data warning:', err?.message || err);
-      // Set default data for dev mode on error
-      setProfile({
-        user: { id: 'dev-user-id', email: 'dev@example.com', emailVerified: true, status: 'active' },
-        profile: { user_id: 'dev-user-id', full_name: 'Dev User', output_language: 'en' }
-      } as unknown as UserProfileResponse);
+      setProfile(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -220,6 +217,46 @@ export default function HomeScreen() {
             </TouchableOpacity>
           );
         })
+      )}
+
+      {/* Pending Action Items Section */}
+      {actionItems.length > 0 && (
+        <>
+          <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+            <Text style={styles.sectionTitle}>Pending Action Items</Text>
+            <View style={styles.actionItemsBadge}>
+              <Text style={styles.actionItemsBadgeText}>{actionItems.length}</Text>
+            </View>
+          </View>
+          {actionItems.slice(0, 4).map((item) => {
+            const priorityColors: Record<string, { bg: string; text: string }> = {
+              high: { bg: '#fee2e2', text: '#991b1b' },
+              medium: { bg: '#fef3c7', text: '#92400e' },
+              low: { bg: '#f3f4f6', text: '#374151' },
+            };
+            const pColor = priorityColors[item.priority] || priorityColors.low;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.actionItemCard}
+                onPress={() => router.push(`/meetings/${item.meeting_id}`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.actionItemLeft}>
+                  <View style={styles.actionItemDot} />
+                  <Text style={styles.actionItemTask} numberOfLines={2}>
+                    {item.task}
+                  </Text>
+                </View>
+                <View style={[styles.actionItemPriority, { backgroundColor: pColor.bg }]}>
+                  <Text style={[styles.actionItemPriorityText, { color: pColor.text }]}>
+                    {item.priority}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </>
       )}
     </ScrollView>
   );
@@ -396,5 +433,61 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     marginTop: 4,
+  },
+  actionItemsBadge: {
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  actionItemsBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  actionItemCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  actionItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 10,
+  },
+  actionItemDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2563eb',
+    marginTop: 4,
+    marginRight: 10,
+    flexShrink: 0,
+  },
+  actionItemTask: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+    lineHeight: 20,
+  },
+  actionItemPriority: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    flexShrink: 0,
+  },
+  actionItemPriorityText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
 });

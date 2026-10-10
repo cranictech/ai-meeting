@@ -51,15 +51,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleDevMode = async () => {
-    if (serverUrl) {
-      await setCustomApiUrl(serverUrl);
-    }
-    await AsyncStorage.setItem('dev_mode', 'true');
-    await AsyncStorage.setItem('auth_token', 'dev-token');
-    router.replace('/(tabs)');
-  };
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -101,13 +92,6 @@ export default function LoginScreen() {
           onPress={() => router.push('/register')}
         >
           <Text style={styles.linkText}>Don't have an account? Register</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.devModeButton}
-          onPress={handleDevMode}
-        >
-          <Text style={styles.devModeButtonText}>Enter Dev Mode (No Auth)</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -195,20 +179,6 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#2563eb',
     fontSize: 14,
-  },
-  devModeButton: {
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  devModeButtonText: {
-    color: '#4b5563',
-    fontSize: 14,
-    fontWeight: '500',
   },
   serverToggleButton: {
     marginTop: 20,

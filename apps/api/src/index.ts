@@ -13,6 +13,14 @@ import { integrationsRouter } from './routes/integrations';
 import { exportsRouter } from './routes/exports';
 import organizationsRouter from './routes/organizations';
 import subscriptionsRouter from './routes/subscriptions';
+import { slackRouter } from './routes/slack';
+import { webhooksRouter } from './routes/webhooks';
+import { apiKeysRouter } from './routes/api-keys';
+import { searchRouter } from './routes/search';
+import { foldersRouter } from './routes/folders';
+import { tagsRouter } from './routes/tags';
+import { publicApiRouter } from './routes/public-api';
+import { zoomRouter } from './routes/zoom';
 
 const app = express();
 
@@ -34,6 +42,14 @@ app.use('/integrations', integrationsRouter);
 app.use('/exports', exportsRouter);
 app.use('/organizations', organizationsRouter);
 app.use('/billing', subscriptionsRouter);
+app.use('/slack', slackRouter);
+app.use('/webhooks', webhooksRouter);
+app.use('/api-keys', apiKeysRouter);
+app.use('/search', searchRouter);
+app.use('/folders', foldersRouter);
+app.use('/tags', tagsRouter);
+app.use('/v1', publicApiRouter);
+app.use('/zoom', zoomRouter);
 
 app.use(errorHandler);
 

@@ -1,9 +1,68 @@
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
-import { Database } from '@meeting-ai/database';
+import { Database } from '@meeti/database';
 import { config } from '../config';
 
-export class GoogleIntegrationService {
+// --- Narrow ISP interfaces ---
+
+export interface GoogleOAuthStatus {
+  getIntegrationStatus(userId: string): Promise<{
+    connected: boolean;
+    scopes: string[];
+    canUseDrive: boolean;
+    canUseGmail: boolean;
+    canUseCalendar: boolean;
+  }>;
+  hasRequiredScopes(userId: string, requiredScopes: string[]): Promise<boolean>;
+}
+
+export interface GoogleDriveWriter {
+  saveToDrive(
+    userId: string,
+    meetingId: string,
+    title: string,
+    content: string,
+    format?: 'doc' | 'pdf'
+  ): Promise<string | null>;
+}
+
+export interface GoogleMailSender {
+  sendEmail(
+    userId: string,
+    to: string[],
+    subject: string,
+    body: string,
+    meetingId?: string
+  ): Promise<boolean>;
+}
+
+export interface GoogleCalendarWriter {
+  createCalendarEvent(
+    userId: string,
+    meetingId: string,
+    title: string,
+    description: string,
+    startTime: Date,
+    endTime: Date,
+    attendees?: string[]
+  ): Promise<string | null>;
+  attachNotesToCalendarEvent(
+    userId: string,
+    meetingId: string,
+    calendarEventId: string,
+    notes: string
+  ): Promise<boolean>;
+}
+
+export interface IGoogleIntegrationService
+  extends GoogleOAuthStatus,
+    GoogleDriveWriter,
+    GoogleMailSender,
+    GoogleCalendarWriter {}
+
+// --- Implementation ---
+
+export class GoogleIntegrationService implements IGoogleIntegrationService {
   private db: Database;
 
   constructor() {

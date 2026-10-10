@@ -1,12 +1,17 @@
 import { Router } from 'express';
-import { Database, OrganizationRepository } from '@meeting-ai/database';
+import {
+  Database,
+  Queryable,
+  OrganizationRepository,
+  IOrganizationRepository,
+} from '@meeti/database';
 import { config } from '../config';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();
-const db = new Database(config.database);
-const orgRepo = new OrganizationRepository(db);
+const db: Queryable = new Database(config.database);
+const orgRepo: IOrganizationRepository = new OrganizationRepository(db);
 
 // Create organization
 router.post('/', authenticate, async (req: AuthRequest, res, next) => {

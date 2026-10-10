@@ -1,16 +1,26 @@
 import { Router } from 'express';
-import { StorageService } from '../services/storage';
+import {
+  StorageService,
+  PresignedUploadSigner,
+  AudioChunkUploader,
+} from '../services/storage';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { Database, MeetingRepository } from '@meeting-ai/database';
+import {
+  Database,
+  Queryable,
+  MeetingRepository,
+  IMeetingReader,
+  IAudioRecordingStore,
+} from '@meeti/database';
 import { config } from '../config';
 import { AppError } from '../middleware/error-handler';
 import { queueMeeting } from '../workers/process-meeting';
 import * as multer from 'multer';
 
 const router = Router();
-const storageService = new StorageService();
-const db = new Database(config.database);
-const meetingRepo = new MeetingRepository(db);
+const storage: PresignedUploadSigner & AudioChunkUploader = new StorageService();
+const db: Queryable = new Database(config.database);
+const meetingStore: IMeetingReader & IAudioRecordingStore = new MeetingRepository(db);
 
 // Configure multer for local file uploads
 const upload = multer.default({
@@ -27,7 +37,7 @@ router.post('/meeting/:meetingId/chunk', async (req: AuthRequest, res, next) => 
     const { meetingId } = req.params;
     const { chunkIndex } = req.body;
 
-    const meeting = await meetingRepo.findById(meetingId);
+    const meeting = await meetingStore.findById(meetingId);
     if (!meeting) {
       throw new AppError(404, 'Meeting not found');
     }
@@ -35,7 +45,7 @@ router.post('/meeting/:meetingId/chunk', async (req: AuthRequest, res, next) => 
       throw new AppError(403, 'Access denied');
     }
 
-    const { url, key } = await storageService.getSignedUploadUrl(
+    const { url, key } = await storage.getSignedUploadUrl(
       req.userId!,
       meetingId,
       `chunk-${chunkIndex}.webm`
@@ -53,7 +63,7 @@ router.post('/meeting/:meetingId/chunk/complete', async (req: AuthRequest, res, 
     const { meetingId } = req.params;
     const { chunkIndex, storageKey } = req.body;
 
-    const meeting = await meetingRepo.findById(meetingId);
+    const meeting = await meetingStore.findById(meetingId);
     if (!meeting) {
       throw new AppError(404, 'Meeting not found');
     }
@@ -68,10 +78,10 @@ router.post('/meeting/:meetingId/chunk/complete', async (req: AuthRequest, res, 
     );
 
     if (!recording) {
-      recording = await meetingRepo.createRecording(meetingId, storageKey);
+      recording = await meetingStore.createRecording(meetingId, storageKey);
     }
 
-    await meetingRepo.createAudioChunk(recording.id, chunkIndex, storageKey);
+    await meetingStore.createAudioChunk(recording.id, chunkIndex, storageKey);
 
     res.json({ success: true });
   } catch (error) {
@@ -93,7 +103,7 @@ async function handleDirectUpload(req: AuthRequest, res: any, next: any) {
     const { meetingId } = req.params;
     const { chunkIndex } = req.body;
 
-    const meeting = await meetingRepo.findById(meetingId);
+    const meeting = await meetingStore.findById(meetingId);
     if (!meeting) {
       throw new AppError(404, 'Meeting not found');
     }
@@ -105,7 +115,7 @@ async function handleDirectUpload(req: AuthRequest, res: any, next: any) {
       throw new AppError(400, 'No file uploaded');
     }
 
-    const key = await storageService.uploadAudioChunk(
+    const key = await storage.uploadAudioChunk(
       req.userId!,
       meetingId,
       parseInt(chunkIndex),
@@ -122,10 +132,10 @@ async function handleDirectUpload(req: AuthRequest, res: any, next: any) {
     );
 
     if (!recording) {
-      recording = await meetingRepo.createRecording(meetingId, key);
+      recording = await meetingStore.createRecording(meetingId, key);
     }
 
-    await meetingRepo.createAudioChunk(recording.id, parseInt(chunkIndex), key);
+    await meetingStore.createAudioChunk(recording.id, parseInt(chunkIndex), key);
 
     res.json({ success: true, storageKey: key });
   } catch (error) {
@@ -146,13 +156,13 @@ async function handleFullUpload(req: AuthRequest, res: any, next: any) {
   try {
     const { meetingId } = req.params;
 
-    const meeting = await meetingRepo.findById(meetingId);
+    const meeting = await meetingStore.findById(meetingId);
     if (!meeting) throw new AppError(404, 'Meeting not found');
     if (meeting.user_id !== req.userId) throw new AppError(403, 'Access denied');
 
     if (!req.file) throw new AppError(400, 'No audio file provided');
 
-    const key = await storageService.uploadAudioChunk(
+    const key = await storage.uploadAudioChunk(
       req.userId!,
       meetingId,
       0,
@@ -168,7 +178,7 @@ async function handleFullUpload(req: AuthRequest, res: any, next: any) {
       [meetingId]
     );
     if (!recording) {
-      recording = await meetingRepo.createRecording(meetingId, key);
+      recording = await meetingStore.createRecording(meetingId, key);
     } else {
       await db.query(
         'UPDATE recordings SET storage_path = $1, updated_at = NOW() WHERE id = $2',
@@ -176,7 +186,7 @@ async function handleFullUpload(req: AuthRequest, res: any, next: any) {
       );
     }
 
-    await meetingRepo.createAudioChunk(recording.id, 0, key);
+    await meetingStore.createAudioChunk(recording.id, 0, key);
 
     // Queue for processing
     await queueMeeting(meetingId);

@@ -1,29 +1,33 @@
 {
   "expo": {
-    "name": "Meeting AI",
-    "slug": "meeting-ai",
+    "name": "Meeti",
+    "slug": "meeti",
     "version": "1.0.0",
     "sdkVersion": "57.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "meeting-ai",
+    "adaptiveIcon": {
+      "foregroundImage": "./assets/adaptive-icon.png",
+      "backgroundColor": "#000000"
+    },
+    "scheme": "meeti",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.meetingai.app",
+      "bundleIdentifier": "com.meeti.app",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Meeting AI requires microphone access to record and transcribe your meeting audio.",
+        "NSMicrophoneUsageDescription": "Meeti requires microphone access to record and transcribe your meeting audio.",
         "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
-      "package": "com.meetingai.app",
+      "package": "com.meeti.app",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",

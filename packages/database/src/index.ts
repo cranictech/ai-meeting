@@ -1,6 +1,7 @@
 import { Pool, PoolConfig } from 'pg';
+import { IDatabase } from './interfaces';
 
-export class Database {
+export class Database implements IDatabase {
   private pool: Pool;
 
   constructor(config: PoolConfig) {
@@ -37,5 +38,7 @@ export class Database {
   }
 }
 
+export * from './interfaces';
 export * from './repositories';
 export * from './types';
+

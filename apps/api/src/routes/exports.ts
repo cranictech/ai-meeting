@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { ExportService } from '../services/export';
+import { ExportService, PdfExporter, DocxExporter } from '../services/export';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error-handler';
-import { Database, MeetingRepository } from '@meeting-ai/database';
+import { Database, Queryable, MeetingRepository, IMeetingReader } from '@meeti/database';
 import { config } from '../config';
 
 const router = Router();
-const exportService = new ExportService();
-const db = new Database(config.database);
-const meetingRepo = new MeetingRepository(db);
+const pdfExporter: PdfExporter = new ExportService();
+const docxExporter: DocxExporter = new ExportService();
+const db: Queryable = new Database(config.database);
+const meetingReader: IMeetingReader = new MeetingRepository(db);
 
 router.use(authenticate);
 
@@ -16,7 +17,7 @@ router.get('/meeting/:meetingId/pdf', async (req: AuthRequest, res, next) => {
   try {
     const { meetingId } = req.params;
 
-    const meeting = await meetingRepo.findById(meetingId);
+    const meeting = await meetingReader.findById(meetingId);
     if (!meeting) {
       throw new AppError(404, 'Meeting not found');
     }
@@ -31,7 +32,7 @@ router.get('/meeting/:meetingId/pdf', async (req: AuthRequest, res, next) => {
       db.query('SELECT * FROM transcripts WHERE meeting_id = $1 ORDER BY start_time ASC', [meetingId]),
     ]);
 
-    const pdfBuffer = await exportService.generatePDF(
+    const pdfBuffer = await pdfExporter.generatePDF(
       meeting,
       summary || {},
       decisions || [],
@@ -56,7 +57,7 @@ router.get('/meeting/:meetingId/docx', async (req: AuthRequest, res, next) => {
   try {
     const { meetingId } = req.params;
 
-    const meeting = await meetingRepo.findById(meetingId);
+    const meeting = await meetingReader.findById(meetingId);
     if (!meeting) {
       throw new AppError(404, 'Meeting not found');
     }
@@ -71,7 +72,7 @@ router.get('/meeting/:meetingId/docx', async (req: AuthRequest, res, next) => {
       db.query('SELECT * FROM transcripts WHERE meeting_id = $1 ORDER BY start_time ASC', [meetingId]),
     ]);
 
-    const docxBuffer = await exportService.generateDOCX(
+    const docxBuffer = await docxExporter.generateDOCX(
       meeting,
       summary || {},
       decisions || [],

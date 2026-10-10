@@ -7,12 +7,11 @@ import { PLANS } from './config/plans';
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  devMode: process.env.DEV_MODE === 'true',
-  
+
   database: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'meeting_ai',
+    database: process.env.DB_NAME || 'meeti',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
     max: 20,
@@ -34,7 +33,7 @@ export const config = {
   
   storage: {
     provider: process.env.STORAGE_PROVIDER || 's3',
-    bucket: process.env.STORAGE_BUCKET || 'meeting-ai-recordings',
+    bucket: process.env.STORAGE_BUCKET || 'meeti-recordings',
     region: process.env.STORAGE_REGION || 'us-east-1',
   },
   
@@ -43,6 +42,15 @@ export const config = {
     llmProvider: process.env.LLM_PROVIDER || 'openai',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
   },
-  
+
+  mail: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    password: process.env.SMTP_PASSWORD || '',
+    from: process.env.MAIL_FROM || process.env.SMTP_USER || '',
+  },
+
   plans: PLANS,
 };

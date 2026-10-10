@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { GoogleIntegrationService } from '../services/google-integration';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error-handler';
-import { Database, MeetingRepository } from '@meeting-ai/database';
+import { Database, MeetingRepository } from '@meeti/database';
 import { config } from '../config';
 
 const router = Router();
@@ -143,7 +143,7 @@ router.post('/google/gmail/send', async (req: AuthRequest, res, next) => {
       });
     }
 
-    emailBody += `\n---\nPowered by Meeting AI`;
+    emailBody += `\n---\nPowered by Meeti`;
 
     await googleService.sendEmail(
       req.userId!,

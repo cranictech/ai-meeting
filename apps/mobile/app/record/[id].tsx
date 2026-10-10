@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Animated,
+  Easing,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   useAudioRecorder,
@@ -10,12 +18,16 @@ import {
 import * as FileSystem from 'expo-file-system/legacy';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import api, { getActiveApiUrl } from '../../lib/api';
+
+const NUM_BARS = 28;
 
 export default function RecordScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const meetingId = params.id as string;
+  const meetingTitle = (params.title as string) || 'Meeting';
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecording, setIsRecording] = useState(false);
@@ -23,12 +35,55 @@ export default function RecordScreen() {
   const [duration, setDuration] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
   const [pendingUploads, setPendingUploads] = useState(0);
+  const [chunksUploaded, setChunksUploaded] = useState(0);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const chunkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const networkCheckRef = useRef<NodeJS.Timeout | null>(null);
   const chunkIndex = useRef(0);
   const offlineChunks = useRef<string[]>([]);
+
+  // Animated waveform bars
+  const barAnims = useRef(
+    Array.from({ length: NUM_BARS }, () => new Animated.Value(0.15))
+  ).current;
+  const waveAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const startWaveAnimation = () => {
+    const animations = barAnims.map((anim, i) => {
+      const delay = (i * 40) % 400;
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, {
+            toValue: 0.2 + Math.random() * 0.8,
+            duration: 300 + Math.floor(Math.random() * 300),
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0.1 + Math.random() * 0.3,
+            duration: 200 + Math.floor(Math.random() * 200),
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    });
+    waveAnimRef.current = Animated.parallel(animations);
+    waveAnimRef.current.start();
+  };
+
+  const stopWaveAnimation = () => {
+    waveAnimRef.current?.stop();
+    barAnims.forEach((anim) => {
+      Animated.timing(anim, {
+        toValue: 0.15,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
 
   useEffect(() => {
     checkNetworkStatus();
@@ -39,6 +94,7 @@ export default function RecordScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
       if (networkCheckRef.current) clearInterval(networkCheckRef.current);
+      stopWaveAnimation();
       if (recorder.isRecording) {
         recorder.stop().catch(() => {});
       }
@@ -50,7 +106,6 @@ export default function RecordScreen() {
     const offline = !networkState.isConnected;
     setIsOffline(offline);
 
-    // If we just came back online, sync pending uploads
     if (!offline && pendingUploads > 0) {
       syncPendingUploads();
     }
@@ -80,7 +135,7 @@ export default function RecordScreen() {
         try {
           const fileUri = upload.localUri;
           const fileExists = await FileSystem.getInfoAsync(fileUri);
-          
+
           if (fileExists.exists) {
             const formData = new FormData();
             formData.append('audio', {
@@ -91,14 +146,17 @@ export default function RecordScreen() {
             formData.append('chunkIndex', '0');
 
             const apiUrl = await getActiveApiUrl();
-            const response = await fetch(`${apiUrl}/upload/meeting/${upload.meetingId}/chunk/direct`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${await AsyncStorage.getItem('auth_token')}`,
-              },
-              body: formData,
-            });
+            const response = await fetch(
+              `${apiUrl}/upload/meeting/${upload.meetingId}/chunk/direct`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                  Authorization: `Bearer ${await AsyncStorage.getItem('auth_token')}`,
+                },
+                body: formData,
+              }
+            );
 
             if (response.ok) {
               await FileSystem.deleteAsync(fileUri);
@@ -110,7 +168,6 @@ export default function RecordScreen() {
         }
       }
 
-      // Remove successful uploads from pending list
       const remaining = uploads.filter((u: any) => !successful.includes(u));
       await AsyncStorage.setItem('pending_uploads', JSON.stringify(remaining));
       setPendingUploads(remaining.length);
@@ -150,6 +207,8 @@ export default function RecordScreen() {
           await saveChunk(recorder.uri);
         }
       }, 10000);
+
+      startWaveAnimation();
     } catch (error) {
       console.error('Failed to start recording:', error);
       Alert.alert('Error', 'Failed to start recording');
@@ -160,25 +219,19 @@ export default function RecordScreen() {
     try {
       if (!uri) return;
 
-      // If offline, save chunk locally
       if (isOffline) {
         const fileName = `meeting_${meetingId}_chunk_${chunkIndex.current}.webm`;
         const fileDir = FileSystem.documentDirectory + 'offline_recordings';
         const fileUri = fileDir + '/' + fileName;
 
         await FileSystem.makeDirectoryAsync(fileDir);
-        await FileSystem.copyAsync({
-          from: uri,
-          to: fileUri,
-        });
+        await FileSystem.copyAsync({ from: uri, to: fileUri });
 
         offlineChunks.current.push(fileUri);
-        console.log(`Saved chunk ${chunkIndex.current} locally for offline mode`);
         chunkIndex.current++;
         return;
       }
 
-      // Online mode - upload to server
       const { data } = await api.post(`/upload/meeting/${meetingId}/chunk`, {
         chunkIndex: chunkIndex.current,
       });
@@ -194,10 +247,10 @@ export default function RecordScreen() {
           storageKey: data.storageKey,
         });
         chunkIndex.current++;
+        setChunksUploaded((prev) => prev + 1);
       }
     } catch (error) {
       console.error('Failed to save chunk:', error);
-      // If upload fails, save locally
       if (!isOffline) {
         const fileName = `meeting_${meetingId}_chunk_${chunkIndex.current}.webm`;
         const fileDir = FileSystem.documentDirectory + 'offline_recordings';
@@ -205,14 +258,10 @@ export default function RecordScreen() {
 
         try {
           await FileSystem.makeDirectoryAsync(fileDir);
-          await FileSystem.copyAsync({
-            from: uri,
-            to: fileUri,
-          });
+          await FileSystem.copyAsync({ from: uri, to: fileUri });
           offlineChunks.current.push(fileUri);
           chunkIndex.current++;
           setIsOffline(true);
-          console.log('Upload failed, saved chunk locally');
         } catch (localError) {
           console.error('Failed to save chunk locally:', localError);
         }
@@ -223,6 +272,7 @@ export default function RecordScreen() {
   const pauseRecording = async () => {
     recorder.pause();
     setIsPaused(true);
+    stopWaveAnimation();
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
   };
@@ -238,12 +288,14 @@ export default function RecordScreen() {
         await saveChunk(recorder.uri);
       }
     }, 10000);
+    startWaveAnimation();
   };
 
   const stopRecording = async () => {
     try {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (chunkIntervalRef.current) clearInterval(chunkIntervalRef.current);
+      stopWaveAnimation();
 
       await recorder.stop();
       if (recorder.uri) {
@@ -252,12 +304,11 @@ export default function RecordScreen() {
 
       await api.post(`/meetings/${meetingId}/stop`);
 
-      // If we have offline chunks, save them to pending uploads
       if (offlineChunks.current.length > 0) {
         try {
-          const pending = await AsyncStorage.getItem('pending_uploads') || '[]';
+          const pending = (await AsyncStorage.getItem('pending_uploads')) || '[]';
           const uploads = JSON.parse(pending);
-          
+
           for (const chunkUri of offlineChunks.current) {
             uploads.push({
               meetingId,
@@ -265,7 +316,7 @@ export default function RecordScreen() {
               timestamp: Date.now(),
             });
           }
-          
+
           await AsyncStorage.setItem('pending_uploads', JSON.stringify(uploads));
           setPendingUploads(uploads.length);
           offlineChunks.current = [];
@@ -289,64 +340,155 @@ export default function RecordScreen() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const WAVEFORM_MAX_HEIGHT = 56;
+
   return (
     <View style={styles.container}>
-      {/* Network Status Indicator */}
+      {/* Network Status Banners */}
       {isOffline && (
         <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>Offline - Recording will be saved locally</Text>
+          <Ionicons name="cloud-offline-outline" size={16} color="#92400e" />
+          <Text style={styles.offlineText}>Offline — saving locally</Text>
         </View>
       )}
-
       {pendingUploads > 0 && !isOffline && (
         <View style={styles.syncBanner}>
-          <Text style={styles.syncText}>Syncing {pendingUploads} pending upload(s)...</Text>
+          <Ionicons name="cloud-upload-outline" size={16} color="#166534" />
+          <Text style={styles.syncText}>Syncing {pendingUploads} recording(s)…</Text>
         </View>
       )}
 
       <View style={styles.content}>
+        {/* Meeting Title */}
+        <Text style={styles.meetingTitle} numberOfLines={2}>
+          {meetingTitle}
+        </Text>
+
+        {/* Status Badge */}
         <View
           style={[
             styles.statusBadge,
-            isRecording && !isPaused ? styles.statusRecording : styles.statusPaused,
+            isRecording && !isPaused
+              ? styles.statusRecording
+              : isPaused
+              ? styles.statusPaused
+              : styles.statusReady,
           ]}
         >
           {isRecording && !isPaused && <View style={styles.recordingDot} />}
-          <Text style={styles.statusText}>
-            {!isRecording ? 'Ready' : isPaused ? 'Paused' : 'Recording'}
+          <Text
+            style={[
+              styles.statusText,
+              isRecording && !isPaused && styles.statusTextActive,
+            ]}
+          >
+            {!isRecording ? 'Ready to Record' : isPaused ? '⏸ Paused' : 'RECORDING'}
           </Text>
         </View>
 
+        {/* Timer */}
         <Text style={styles.timer}>{formatDuration(duration)}</Text>
 
+        {/* Waveform Visualizer */}
+        <View style={styles.waveformContainer}>
+          {barAnims.map((anim, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.waveBar,
+                {
+                  transform: [
+                    {
+                      scaleY: isRecording && !isPaused ? anim : 0.15,
+                    },
+                  ],
+                  height: WAVEFORM_MAX_HEIGHT,
+                  backgroundColor:
+                    isRecording && !isPaused
+                      ? i % 3 === 0
+                        ? '#2563eb'
+                        : i % 3 === 1
+                        ? '#3b82f6'
+                        : '#60a5fa'
+                      : '#e5e7eb',
+                },
+              ]}
+            />
+          ))}
+        </View>
+
+        {/* Status label */}
         {isRecording && (
-          <Text style={styles.subtitle}>
-            {isOffline ? 'Recording offline (saved locally)' : isPaused ? 'Recording paused' : 'Listening...'}
+          <Text style={styles.listeningText}>
+            {isOffline
+              ? 'Saving locally — will sync when online'
+              : isPaused
+              ? 'Recording paused — tap Resume to continue'
+              : `Listening… ${chunksUploaded > 0 ? `(${chunksUploaded} segment${chunksUploaded !== 1 ? 's' : ''} saved)` : ''}`}
           </Text>
         )}
 
-        <View style={styles.buttons}>
+        {/* Controls */}
+        <View style={styles.controls}>
           {!isRecording ? (
-            <TouchableOpacity style={styles.startButton} onPress={startRecording}>
-              <Text style={styles.buttonText}>Start Recording</Text>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={startRecording}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="mic" size={22} color="#ffffff" />
+              <Text style={styles.startButtonText}>Start Recording</Text>
             </TouchableOpacity>
           ) : (
-            <>
+            <View style={styles.recordingButtons}>
               {!isPaused ? (
-                <TouchableOpacity style={styles.pauseButton} onPress={pauseRecording}>
-                  <Text style={styles.buttonText}>Pause</Text>
+                <TouchableOpacity
+                  style={styles.pauseButton}
+                  onPress={pauseRecording}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="pause" size={22} color="#ffffff" />
+                  <Text style={styles.controlButtonText}>Pause</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.resumeButton} onPress={resumeRecording}>
-                  <Text style={styles.buttonText}>Resume</Text>
+                <TouchableOpacity
+                  style={styles.resumeButton}
+                  onPress={resumeRecording}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="play" size={22} color="#ffffff" />
+                  <Text style={styles.controlButtonText}>Resume</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.stopButton} onPress={stopRecording}>
-                <Text style={styles.buttonText}>Stop & Process</Text>
+
+              <TouchableOpacity
+                style={styles.stopButton}
+                onPress={() =>
+                  Alert.alert(
+                    'Stop Recording',
+                    'Are you sure you want to stop and process this meeting?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Stop & Process', style: 'destructive', onPress: stopRecording },
+                    ]
+                  )
+                }
+                activeOpacity={0.8}
+              >
+                <Ionicons name="stop" size={22} color="#ffffff" />
+                <Text style={styles.controlButtonText}>Stop</Text>
               </TouchableOpacity>
-            </>
+            </View>
           )}
         </View>
+
+        {/* Consent notice */}
+        {!isRecording && (
+          <Text style={styles.consentNote}>
+            By recording, please ensure all participants consent to being recorded
+            as required by applicable law.
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -355,37 +497,53 @@ export default function RecordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#0f172a',
   },
   offlineBanner: {
     backgroundColor: '#fef3c7',
-    padding: 12,
+    padding: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#fde68a',
   },
   offlineText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#92400e',
   },
   syncBanner: {
     backgroundColor: '#dcfce7',
-    padding: 12,
+    padding: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#86efac',
   },
   syncText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#166534',
   },
   content: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 32,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  meetingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#e2e8f0',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 16,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -393,68 +551,134 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  statusReady: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   statusRecording: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: 'rgba(220, 38, 38, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.3)',
   },
   statusPaused: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.3)',
   },
   recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#dc2626',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#ef4444',
     marginRight: 8,
   },
   statusText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#94a3b8',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  statusTextActive: {
+    color: '#f87171',
   },
   timer: {
-    fontSize: 64,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 16,
+    fontSize: 62,
+    fontWeight: '300',
+    color: '#f8fafc',
+    letterSpacing: -2,
+    marginBottom: 32,
+    fontVariant: ['tabular-nums'],
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 48,
-  },
-  buttons: {
+  waveformContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 64,
+    gap: 3,
+    marginBottom: 20,
     width: '100%',
-    gap: 12,
+  },
+  waveBar: {
+    width: 5,
+    borderRadius: 3,
+    opacity: 0.85,
+  },
+  listeningText: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 36,
+    paddingHorizontal: 20,
+  },
+  controls: {
+    width: '100%',
   },
   startButton: {
     backgroundColor: '#2563eb',
-    padding: 20,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  startButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  recordingButtons: {
+    flexDirection: 'row',
+    gap: 12,
   },
   pauseButton: {
-    backgroundColor: '#eab308',
-    padding: 20,
-    borderRadius: 12,
+    flex: 1,
+    backgroundColor: '#d97706',
+    paddingVertical: 18,
+    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   resumeButton: {
+    flex: 1,
     backgroundColor: '#16a34a',
-    padding: 20,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   stopButton: {
+    flex: 1,
     backgroundColor: '#dc2626',
-    padding: 20,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
+  controlButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  consentNote: {
+    marginTop: 24,
+    fontSize: 11,
+    color: '#475569',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    lineHeight: 16,
   },
 });

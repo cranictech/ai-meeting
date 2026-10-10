@@ -78,13 +78,7 @@ api.interceptors.request.use(async (config) => {
   } else if (!config.baseURL || config.baseURL === '') {
     config.baseURL = getDynamicApiUrl();
   }
-  
-  // Add dev mode header if enabled
-  const devMode = await AsyncStorage.getItem('dev_mode');
-  if (devMode === 'true') {
-    config.headers['X-Dev-Mode'] = 'true';
-  }
-  
+
   const token = await AsyncStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -100,7 +94,7 @@ api.interceptors.response.use(
       error.message = `Cannot connect to server at ${activeUrl}. Please ensure server is running on the same network.`;
     } else if (error.response?.status === 401) {
       const token = await AsyncStorage.getItem('auth_token');
-      if (token && token !== 'dev-token') {
+      if (token) {
         await AsyncStorage.removeItem('auth_token');
       }
     }
@@ -145,6 +139,7 @@ export interface Meeting {
   audio_url?: string;
   started_at?: string;
   ended_at?: string;
+  metadata?: { platform?: string; meeting_link?: string | null };
   created_at?: string;
   updated_at?: string;
 }
@@ -211,8 +206,13 @@ export const meetingsApi = {
   get: (id: string) =>
     api.get<Meeting>(`/meetings/${id}`),
 
-  create: (data: { title: string; meetingType?: string; outputLanguage?: string }) =>
-    api.post<Meeting>('/meetings', data),
+  create: (data: {
+    title: string;
+    meetingType?: string;
+    outputLanguage?: string;
+    platform?: string;
+    meetingLink?: string;
+  }) => api.post<Meeting>('/meetings', data),
 
   update: (id: string, data: Partial<Meeting>) =>
     api.patch<Meeting>(`/meetings/${id}`, data),
@@ -365,4 +365,59 @@ export const organizationsApi = {
     api.delete<any>(`/organizations/${id}`),
 };
 
+export const slackApi = {
+  getStatus: () =>
+    api.get<{
+      connected: boolean;
+      teamName?: string;
+      teamId?: string;
+      defaultChannelId?: string;
+      defaultChannelName?: string;
+      notifyOnComplete?: boolean;
+      notifyOnActionItems?: boolean;
+    }>('/slack/status'),
+
+  sendMeetingNotes: (meetingId: string, channelId?: string) =>
+    api.post<{ success: boolean }>('/slack/share/' + meetingId, { channelId }),
+
+  sendReminders: (channelId?: string) =>
+    api.post<{ success: boolean; count: number }>('/slack/remind', { channelId }),
+};
+
+export const zoomApi = {
+  getStatus: () =>
+    api.get<{ connected: boolean; email?: string; accountId?: string }>('/zoom/status'),
+
+  listRecordings: () =>
+    api.get<Array<{
+      id: string;
+      uuid: string;
+      topic: string;
+      start_time: string;
+      duration: number;
+      total_size: number;
+      recording_count: number;
+      download_url?: string;
+      file_type?: string;
+    }>>('/zoom/recordings'),
+
+  importRecording: (data: { recordingId?: string; topic: string; duration?: number; downloadUrl?: string }) =>
+    api.post<{ success: boolean; meetingId: string; title: string }>('/zoom/import', data),
+};
+
+export const foldersApi = {
+  list: () => api.get<any[]>('/folders'),
+  create: (name: string, color?: string, organizationId?: string) =>
+    api.post<any>('/folders', { name, color, organizationId }),
+  delete: (id: string) => api.delete<{ success: boolean }>('/folders/' + id),
+};
+
+export const tagsApi = {
+  list: () => api.get<any[]>('/tags'),
+  create: (name: string, color?: string) =>
+    api.post<any>('/tags', { name, color }),
+  delete: (id: string) => api.delete<{ success: boolean }>('/tags/' + id),
+};
+
 export default api;
+

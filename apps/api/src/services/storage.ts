@@ -5,7 +5,33 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export class StorageService {
+export interface AudioChunkUploader {
+  uploadAudioChunk(
+    userId: string,
+    meetingId: string,
+    chunkIndex: number,
+    buffer: Buffer
+  ): Promise<string>;
+}
+
+export interface PresignedUploadSigner {
+  getSignedUploadUrl(
+    userId: string,
+    meetingId: string,
+    filename: string,
+    expiresIn?: number
+  ): Promise<{ url: string; key: string }>;
+}
+
+export interface FileDownloadUrlSigner {
+  getSignedDownloadUrl(key: string, expiresIn?: number): Promise<string>;
+}
+
+export interface IStorageService extends AudioChunkUploader, PresignedUploadSigner, FileDownloadUrlSigner {
+  generateKey(userId: string, meetingId: string, filename: string): string;
+}
+
+export class StorageService implements IStorageService {
   private s3: S3Client | null = null;
   private bucket: string;
   private useLocal: boolean;
@@ -15,7 +41,7 @@ export class StorageService {
     this.bucket = config.storage.bucket;
     this.useLocal = config.storage.provider === 'local';
     this.localStoragePath = path.join(process.cwd(), 'uploads');
-    
+
     if (!this.useLocal) {
       try {
         this.s3 = new S3Client({ region: config.storage.region });

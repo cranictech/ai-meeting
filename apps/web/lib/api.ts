@@ -6,11 +6,6 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    // Add dev mode header if enabled
-    if (localStorage.getItem('dev_mode') === 'true') {
-      config.headers['X-Dev-Mode'] = 'true';
-    }
-    
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -62,6 +57,7 @@ export interface Meeting {
   audio_url?: string;
   started_at?: string;
   ended_at?: string;
+  metadata?: { platform?: string; meeting_link?: string | null };
   created_at: string;
   updated_at?: string;
 }
@@ -162,8 +158,13 @@ export const oauthApi = {
 };
 
 export const meetingsApi = {
-  create: (title: string, meetingType?: string, outputLanguage?: string) =>
-    api.post<Meeting>('/meetings', { title, meetingType, outputLanguage }),
+  create: (data: {
+    title: string;
+    meetingType?: string;
+    outputLanguage?: string;
+    platform?: string;
+    meetingLink?: string;
+  }) => api.post<Meeting>('/meetings', data),
 
   list: () => api.get<Meeting[]>('/meetings'),
 
@@ -362,4 +363,158 @@ export const exportsApi = {
   },
 };
 
+export const slackApi = {
+  getStatus: () =>
+    api.get<{
+      connected: boolean;
+      teamName?: string;
+      teamId?: string;
+      defaultChannelId?: string;
+      defaultChannelName?: string;
+      notifyOnComplete?: boolean;
+      notifyOnActionItems?: boolean;
+    }>('/slack/status'),
+
+  connect: (code: string, redirectUri: string) =>
+    api.post<{ success: boolean; teamName: string }>('/slack/connect', { code, redirectUri }),
+
+  disconnect: () =>
+    api.delete<{ success: boolean }>('/slack/disconnect'),
+
+  listChannels: () =>
+    api.get<Array<{ id: string; name: string; isPrivate: boolean; memberCount?: number }>>('/slack/channels'),
+
+  sendMeetingNotes: (meetingId: string, channelId?: string) =>
+    api.post<{ success: boolean }>('/slack/share/' + meetingId, { channelId }),
+
+  sendReminders: (channelId?: string) =>
+    api.post<{ success: boolean; count: number }>('/slack/remind', { channelId }),
+
+  updateSettings: (settings: {
+    notifyOnComplete?: boolean;
+    notifyOnActionItems?: boolean;
+    defaultChannelId?: string;
+    defaultChannelName?: string;
+  }) => api.post('/slack/settings', settings),
+};
+
+export const zoomApi = {
+  getStatus: () =>
+    api.get<{ connected: boolean; email?: string; accountId?: string }>('/zoom/status'),
+
+  getAuthUrl: (redirectUri?: string) =>
+    api.get<{ url: string }>('/zoom/auth-url', { params: { redirectUri } }),
+
+  connect: (code: string, redirectUri?: string) =>
+    api.post<{ success: boolean; email?: string }>('/zoom/connect', { code, redirectUri }),
+
+  disconnect: () =>
+    api.delete<{ success: boolean }>('/zoom/disconnect'),
+
+  listRecordings: () =>
+    api.get<Array<{
+      id: string;
+      uuid: string;
+      topic: string;
+      start_time: string;
+      duration: number;
+      total_size: number;
+      recording_count: number;
+      download_url?: string;
+      file_type?: string;
+    }>>('/zoom/recordings'),
+
+  importRecording: (data: { recordingId?: string; topic: string; duration?: number; downloadUrl?: string }) =>
+    api.post<{ success: boolean; meetingId: string; title: string }>('/zoom/import', data),
+};
+
+export interface ApiKeyItem {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  last_used_at?: string;
+  created_at: string;
+  active: boolean;
+  apiKey?: string;
+}
+
+export const apiKeysApi = {
+  list: () => api.get<ApiKeyItem[]>('/api-keys'),
+  create: (name: string, scopes: string[] = ['read', 'write']) =>
+    api.post<ApiKeyItem & { apiKey: string }>('/api-keys', { name, scopes }),
+  revoke: (id: string) => api.delete<{ success: boolean }>('/api-keys/' + id),
+};
+
+export interface WebhookItem {
+  id: string;
+  url: string;
+  events: string[];
+  description?: string;
+  active: boolean;
+  failure_count: number;
+  last_triggered_at?: string;
+  created_at: string;
+  secret?: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  event_type: string;
+  payload: any;
+  response_status?: number;
+  response_body?: string;
+  attempt_count: number;
+  delivered_at?: string;
+  status: string;
+  created_at: string;
+}
+
+export const webhooksApi = {
+  list: () => api.get<WebhookItem[]>('/webhooks'),
+  create: (url: string, events: string[] = ['meeting.completed'], description?: string) =>
+    api.post<WebhookItem>('/webhooks', { url, events, description }),
+  delete: (id: string) => api.delete<{ success: boolean }>('/webhooks/' + id),
+  test: (id: string) => api.post<{ success: boolean; status?: number; error?: string }>('/webhooks/' + id + '/test'),
+  getDeliveries: (id: string) => api.get<WebhookDelivery[]>('/webhooks/' + id + '/deliveries'),
+};
+
+export interface FolderItem {
+  id: string;
+  name: string;
+  color?: string;
+  meeting_count?: number;
+  created_at: string;
+}
+
+export const foldersApi = {
+  list: () => api.get<FolderItem[]>('/folders'),
+  create: (name: string, color?: string, organizationId?: string) =>
+    api.post<FolderItem>('/folders', { name, color, organizationId }),
+  delete: (id: string) => api.delete<{ success: boolean }>('/folders/' + id),
+  addMeeting: (folderId: string, meetingId: string) =>
+    api.post<{ success: boolean }>(`/folders/${folderId}/meetings`, { meetingId }),
+  removeMeeting: (folderId: string, meetingId: string) =>
+    api.delete<{ success: boolean }>(`/folders/${folderId}/meetings/${meetingId}`),
+};
+
+export interface TagItem {
+  id: string;
+  name: string;
+  color?: string;
+  meeting_count?: number;
+}
+
+export const tagsApi = {
+  list: () => api.get<TagItem[]>('/tags'),
+  create: (name: string, color?: string) =>
+    api.post<TagItem>('/tags', { name, color }),
+  delete: (id: string) => api.delete<{ success: boolean }>('/tags/' + id),
+  addMeeting: (tagId: string, meetingId: string) =>
+    api.post<{ success: boolean }>(`/tags/${tagId}/meetings`, { meetingId }),
+  removeMeeting: (tagId: string, meetingId: string) =>
+    api.delete<{ success: boolean }>(`/tags/${tagId}/meetings/${meetingId}`),
+};
+
 export default api;
+

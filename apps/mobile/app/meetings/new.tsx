@@ -24,6 +24,25 @@ const MEETING_TYPES = [
   'General Note',
 ];
 
+type PlatformOption = {
+  value: string;
+  label: string;
+  requiresLink: boolean;
+  placeholder?: string;
+};
+
+const PLATFORMS: PlatformOption[] = [
+  { value: 'in-person', label: 'In-person / Room', requiresLink: false },
+  { value: 'google-meet', label: 'Google Meet', requiresLink: true, placeholder: 'https://meet.google.com/xxx-xxxx-xxx' },
+  { value: 'zoom', label: 'Zoom', requiresLink: true, placeholder: 'https://zoom.us/j/00000000000' },
+  { value: 'microsoft-teams', label: 'Microsoft Teams', requiresLink: true, placeholder: 'https://teams.microsoft.com/l/meetup-join/...' },
+  { value: 'webex', label: 'Cisco Webex', requiresLink: true, placeholder: 'https://yourcompany.webex.com/meet/username' },
+  { value: 'phone', label: 'Phone Call', requiresLink: false },
+  { value: 'whatsapp', label: 'WhatsApp', requiresLink: false },
+  { value: 'telegram', label: 'Telegram', requiresLink: false },
+  { value: 'other', label: 'Other', requiresLink: false },
+];
+
 const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'sw', label: 'Swahili' },
@@ -37,11 +56,23 @@ export default function NewMeetingScreen() {
   const [title, setTitle] = useState('');
   const [meetingType, setMeetingType] = useState('Business Meeting');
   const [outputLanguage, setOutputLanguage] = useState('en');
+  const [platform, setPlatform] = useState('in-person');
+  const [meetingLink, setMeetingLink] = useState('');
   const [creating, setCreating] = useState(false);
+
+  const selectedPlatform = PLATFORMS.find((p) => p.value === platform) ?? PLATFORMS[0];
 
   const handleCreateAndRecord = async () => {
     if (!title.trim()) {
       Alert.alert('Required Field', 'Please enter a title for the meeting.');
+      return;
+    }
+
+    if (selectedPlatform.requiresLink && !meetingLink.trim()) {
+      Alert.alert(
+        'Meeting Link Required',
+        `Paste the ${selectedPlatform.label} link so the meeting can be joined.`,
+      );
       return;
     }
 
@@ -51,9 +82,11 @@ export default function NewMeetingScreen() {
         title: title.trim(),
         meetingType,
         outputLanguage,
+        platform,
+        meetingLink: selectedPlatform.requiresLink ? meetingLink.trim() : undefined,
       });
 
-      router.replace(`/record/${res.data.id}`);
+      router.replace(`/record/${res.data.id}?title=${encodeURIComponent(title.trim())}`);
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.error || 'Failed to create meeting');
       setCreating(false);
@@ -76,6 +109,50 @@ export default function NewMeetingScreen() {
             autoFocus
           />
         </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Meeting Platform</Text>
+          <View style={styles.chipsContainer}>
+            {PLATFORMS.map((p) => {
+              const isSelected = platform === p.value;
+              return (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[styles.chip, isSelected && styles.chipSelected]}
+                  onPress={() => {
+                    setPlatform(p.value);
+                    setMeetingLink('');
+                  }}
+                >
+                  <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={styles.platformHint}>
+            {selectedPlatform.requiresLink
+              ? 'Paste the invitation link to join. Audio is recorded on this device.'
+              : 'Recording starts immediately on this device. No link required.'}
+          </Text>
+        </View>
+
+        {selectedPlatform.requiresLink && (
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{selectedPlatform.label} Link</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={selectedPlatform.placeholder}
+              placeholderTextColor="#9ca3af"
+              value={meetingLink}
+              onChangeText={setMeetingLink}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+          </View>
+        )}
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Meeting Type</Text>
@@ -132,7 +209,9 @@ export default function NewMeetingScreen() {
         ) : (
           <View style={styles.buttonContent}>
             <Ionicons name="mic" size={20} color="#ffffff" />
-            <Text style={styles.startButtonText}>Start Recording</Text>
+            <Text style={styles.startButtonText}>
+              {selectedPlatform.requiresLink ? 'Join & Start Recording' : 'Start Recording'}
+            </Text>
           </View>
         )}
       </TouchableOpacity>
@@ -186,6 +265,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  platformHint: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 8,
+    lineHeight: 17,
   },
   chip: {
     paddingHorizontal: 12,

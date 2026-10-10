@@ -1,6 +1,6 @@
-import { Database } from '@meeting-ai/database';
+import { Queryable } from '@meeti/database';
 
-interface NotificationData {
+export interface NotificationData {
   userId: string;
   type: string;
   title: string;
@@ -8,8 +8,26 @@ interface NotificationData {
   data?: any;
 }
 
-export class NotificationService {
-  constructor(private db: Database) {}
+export interface MeetingNotifier {
+  notifyMeetingComplete(userId: string, meetingId: string, meetingTitle: string): Promise<void>;
+  notifyMeetingFailed(userId: string, meetingId: string, meetingTitle: string): Promise<void>;
+}
+
+export interface TaskNotifier {
+  notifyTaskDue(userId: string, taskId: string, task: string, dueDate: Date): Promise<void>;
+}
+
+export interface DirectNotificationSender {
+  create(notification: NotificationData): Promise<void>;
+}
+
+export interface INotificationService
+  extends MeetingNotifier,
+    TaskNotifier,
+    DirectNotificationSender {}
+
+export class NotificationService implements INotificationService {
+  constructor(private db: Queryable) {}
 
   async create(notification: NotificationData): Promise<void> {
     await this.db.query(

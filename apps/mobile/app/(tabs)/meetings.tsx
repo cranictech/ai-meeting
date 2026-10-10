@@ -27,7 +27,7 @@ export default function MeetingsScreen() {
     try {
       const res = await meetingsApi.list();
       setMeetings(res.data || []);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Failed to load meetings:', err?.message || err);
       setMeetings([]);
     } finally {

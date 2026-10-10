@@ -3,10 +3,34 @@ import IORedis from 'ioredis';
 import * as path from 'path';
 import * as fs from 'fs';
 import { config } from '../config';
-import { Database, MeetingRepository, TranscriptRepository, ActionItemRepository } from '@meeting-ai/database';
-import { TranscriptionService } from '../services/transcription';
-import { AnalysisService } from '../services/analysis';
-import { NotificationService } from '../services/notification';
+import {
+  Database,
+  Queryable,
+  MeetingRepository,
+  TranscriptRepository,
+  ActionItemRepository,
+  IMeetingReader,
+  IMeetingLifecycle,
+  IAudioRecordingStore,
+  ITranscriptLifecycle,
+  ITranscriptSegmentStore,
+  ISpeakerStore,
+  IActionItemWriter,
+  IMeetingSummaryStore,
+  IMeetingDecisionStore,
+} from '@meeti/database';
+import {
+  TranscriptionService,
+  SpeechTranscriber,
+  AnalysisService,
+  MeetingAnalyzer,
+  NotificationService,
+  MeetingNotifier,
+  webhookService,
+  WebhookDispatcher,
+  slackService,
+  SlackMeetingNotifier,
+} from '../services';
 
 let connection: IORedis | null = null;
 
@@ -35,13 +59,19 @@ if (config.redis.enabled) {
 
 export const meetingQueue = connection ? new Queue('meeting-processing', { connection }) : null;
 
-const db = new Database(config.database);
-const meetingRepo = new MeetingRepository(db);
-const transcriptRepo = new TranscriptRepository(db);
-const actionItemRepo = new ActionItemRepository(db);
-const transcriptionService = new TranscriptionService();
-const aiService = new AnalysisService();
-const notificationService = new NotificationService(db);
+export type MeetingStore = IMeetingReader & IMeetingLifecycle & IAudioRecordingStore;
+export type TranscriptStore = ITranscriptLifecycle & ITranscriptSegmentStore & ISpeakerStore;
+export type ActionItemStore = IActionItemWriter & IMeetingSummaryStore & IMeetingDecisionStore;
+
+const db: Queryable = new Database(config.database);
+const meetingRepo: MeetingStore = new MeetingRepository(db);
+const transcriptRepo: TranscriptStore = new TranscriptRepository(db);
+const actionItemRepo: ActionItemStore = new ActionItemRepository(db);
+const transcriptionService: SpeechTranscriber = new TranscriptionService();
+const analyzer: MeetingAnalyzer = new AnalysisService();
+const notificationService: MeetingNotifier = new NotificationService(db);
+const webhookDispatcher: WebhookDispatcher = webhookService;
+const slackNotifier: SlackMeetingNotifier = slackService;
 
 interface MeetingJob {
   meetingId: string;
@@ -119,7 +149,6 @@ export async function processMeeting(meetingId: string): Promise<void> {
         text: segment.text,
         language: detectedLanguage,
         speaker_id: segment.speaker ? speakerMap[segment.speaker] : undefined,
-        confidence: 0.95,
       });
     }
 
@@ -131,8 +160,8 @@ export async function processMeeting(meetingId: string): Promise<void> {
 
     await transcriptRepo.updateStatus(transcript.id, 'completed');
 
-    // 6. AI Analysis
-    const analysis = await aiService.analyzeMeeting(
+    // 6. Content analysis
+    const analysis = await analyzer.analyzeMeeting(
       transcriptionResult.text,
       meeting.meeting_type,
       meeting.title
@@ -218,7 +247,52 @@ export async function processMeeting(meetingId: string): Promise<void> {
         meeting.title
       );
     } catch (notifErr) {
-      // Ignore notification failure in development
+      console.warn('Failed to send completion notification:', notifErr);
+    }
+
+    // 15. Dispatch webhook event
+    try {
+      const finalSummary = await db.queryOne(
+        'SELECT executive_summary FROM meeting_summaries WHERE meeting_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [meetingId]
+      );
+      const finalActions = await db.query(
+        'SELECT task, assignee, due_date FROM action_items WHERE meeting_id = $1',
+        [meetingId]
+      );
+      await webhookDispatcher.dispatchEvent(meeting.user_id, 'meeting.completed', {
+        meeting_id: meetingId,
+        title: meeting.title,
+        duration_seconds: meeting.duration_seconds,
+        summary: finalSummary?.executive_summary,
+        action_item_count: finalActions?.length ?? 0,
+      });
+    } catch (webhookErr) {
+      console.warn('Webhook dispatch failed:', webhookErr);
+    }
+
+    // 16. Notify Slack
+    try {
+      const slackIntegration = await slackNotifier.getIntegration(meeting.user_id);
+      if (slackIntegration?.notify_on_complete) {
+        const slackSummary = await db.queryOne(
+          'SELECT executive_summary, summary FROM meeting_summaries WHERE meeting_id = $1 ORDER BY created_at DESC LIMIT 1',
+          [meetingId]
+        );
+        const slackActions = await db.query(
+          'SELECT task, assignee, due_date FROM action_items WHERE meeting_id = $1',
+          [meetingId]
+        );
+        await slackNotifier.sendMeetingNotes(meeting.user_id, {
+          meetingId,
+          title: meeting.title,
+          duration: meeting.duration_seconds || 0,
+          summary: slackSummary?.executive_summary || slackSummary?.summary,
+          actionItems: slackActions || [],
+        });
+      }
+    } catch (slackErr) {
+      console.warn('Slack notification failed:', slackErr);
     }
 
     console.log(`Meeting ${meetingId} processed successfully`);
@@ -253,7 +327,7 @@ export async function queueMeeting(meetingId: string): Promise<void> {
     }
   }
 
-  // Fallback to async direct execution
+  // Direct asynchronous execution when the queue is unavailable
   setImmediate(async () => {
     try {
       await processMeeting(meetingId);

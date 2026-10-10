@@ -7,7 +7,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
-              <span className="text-2xl font-bold text-gray-900">Meeting AI</span>
+              <span className="text-2xl font-bold text-gray-900">Meeti</span>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/login" className="text-gray-700 hover:text-gray-900">
@@ -143,7 +143,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-gray-600">
-            (c) 2026 Meeting AI. All rights reserved.
+            (c) 2026 Meeti. All rights reserved.
           </div>
         </div>
       </footer>

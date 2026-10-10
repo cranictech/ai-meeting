@@ -14,9 +14,8 @@ export default function BillingPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
-    const devMode = localStorage.getItem('dev_mode');
-    
-    if (!token && !devMode) {
+
+    if (!token) {
       router.push('/login');
       return;
     }

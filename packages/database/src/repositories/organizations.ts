@@ -1,4 +1,4 @@
-import { Database } from '../index';
+import { Queryable, IOrganizationRepository } from '../interfaces';
 
 export interface Organization {
   id: string;
@@ -16,8 +16,8 @@ export interface OrganizationMember {
   joined_at: string;
 }
 
-export class OrganizationRepository {
-  constructor(private db: Database) {}
+export class OrganizationRepository implements IOrganizationRepository {
+  constructor(private db: Queryable) {}
 
   async create(name: string, slug: string, settings: any = {}): Promise<Organization> {
     const result = await this.db.queryOne(

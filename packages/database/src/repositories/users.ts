@@ -1,8 +1,8 @@
-import { Database } from '../index';
+import { Queryable, IUserRepository } from '../interfaces';
 import { User, Profile } from '../types';
 
-export class UserRepository {
-  constructor(private db: Database) {}
+export class UserRepository implements IUserRepository {
+  constructor(private db: Queryable) {}
 
   async create(email: string, passwordHash?: string): Promise<User> {
     const result = await this.db.queryOne<User>(

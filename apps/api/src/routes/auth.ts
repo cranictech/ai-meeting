@@ -2,14 +2,20 @@ import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { Database, UserRepository } from '@meeting-ai/database';
+import {
+  Database,
+  Queryable,
+  UserRepository,
+  IUserIdentityRepository,
+  IUserProfileRepository,
+} from '@meeti/database';
 import { config } from '../config';
 import { AppError } from '../middleware/error-handler';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const db = new Database(config.database);
-const userRepo = new UserRepository(db);
+const db: Queryable = new Database(config.database);
+const userRepo: IUserIdentityRepository & IUserProfileRepository = new UserRepository(db);
 
 const registerSchema = z.object({
   email: z.string().email(),

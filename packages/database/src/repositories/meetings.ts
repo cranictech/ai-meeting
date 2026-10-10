@@ -1,14 +1,21 @@
-import { Database } from '../index';
+import { Queryable, IMeetingRepository } from '../interfaces';
 import { Meeting, Recording, AudioChunk } from '../types';
 
-export class MeetingRepository {
-  constructor(private db: Database) {}
+export class MeetingRepository implements IMeetingRepository {
+  constructor(private db: Queryable) {}
 
   async create(userId: string, data: Partial<Meeting>): Promise<Meeting> {
     const result = await this.db.queryOne<Meeting>(
-      `INSERT INTO meetings (user_id, title, meeting_type, output_language, recording_quality) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [userId, data.title, data.meeting_type || 'business', data.output_language || 'en', data.recording_quality || 'standard']
+      `INSERT INTO meetings (user_id, title, meeting_type, output_language, recording_quality, metadata) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [
+        userId,
+        data.title,
+        data.meeting_type || 'business',
+        data.output_language || 'en',
+        data.recording_quality || 'standard',
+        JSON.stringify(data.metadata ?? {}),
+      ]
     );
     if (!result) throw new Error('Failed to create meeting');
     return result;
@@ -133,6 +140,10 @@ export class MeetingRepository {
     if (data.duration_seconds !== undefined) {
       fields.push(`duration_seconds = $${idx++}`);
       values.push(data.duration_seconds);
+    }
+    if (data.metadata !== undefined) {
+      fields.push(`metadata = $${idx++}`);
+      values.push(JSON.stringify(data.metadata));
     }
 
     fields.push(`updated_at = NOW()`);

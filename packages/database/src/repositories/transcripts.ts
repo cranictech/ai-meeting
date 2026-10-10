@@ -1,8 +1,8 @@
-import { Database } from '../index';
+import { Queryable, ITranscriptRepository } from '../interfaces';
 import { Transcript, TranscriptSegment, Speaker } from '../types';
 
-export class TranscriptRepository {
-  constructor(private db: Database) {}
+export class TranscriptRepository implements ITranscriptRepository {
+  constructor(private db: Queryable) {}
 
   async create(meetingId: string, provider: string): Promise<Transcript> {
     const result = await this.db.queryOne<Transcript>(

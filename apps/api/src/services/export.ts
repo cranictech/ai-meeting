@@ -1,7 +1,29 @@
 import PDFDocument from 'pdfkit';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 
-export class ExportService {
+export interface PdfExporter {
+  generatePDF(
+    meeting: any,
+    summary: any,
+    decisions: any[],
+    actionItems: any[],
+    transcript: any[]
+  ): Promise<Buffer>;
+}
+
+export interface DocxExporter {
+  generateDOCX(
+    meeting: any,
+    summary: any,
+    decisions: any[],
+    actionItems: any[],
+    transcript: any[]
+  ): Promise<Buffer>;
+}
+
+export interface IExportService extends PdfExporter, DocxExporter {}
+
+export class ExportService implements IExportService {
   async generatePDF(meeting: any, summary: any, decisions: any[], actionItems: any[], transcript: any[]): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {

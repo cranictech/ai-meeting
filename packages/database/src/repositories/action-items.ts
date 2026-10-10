@@ -1,8 +1,8 @@
-import { Database } from '../index';
+import { Queryable, IActionItemRepository } from '../interfaces';
 import { ActionItem, MeetingSummary, MeetingDecision } from '../types';
 
-export class ActionItemRepository {
-  constructor(private db: Database) {}
+export class ActionItemRepository implements IActionItemRepository {
+  constructor(private db: Queryable) {}
 
   async create(meetingId: string, data: Partial<ActionItem>): Promise<ActionItem> {
     const result = await this.db.queryOne<ActionItem>(

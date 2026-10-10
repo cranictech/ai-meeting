@@ -1,11 +1,22 @@
 import { Router } from 'express';
-import { Database, TranscriptRepository } from '@meeting-ai/database';
+import {
+  Database,
+  Queryable,
+  TranscriptRepository,
+  ITranscriptLifecycle,
+  ITranscriptSegmentStore,
+  ISpeakerStore,
+} from '@meeti/database';
 import { config } from '../config';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
+type TranscriptQueryStore = Pick<ITranscriptLifecycle, 'findByMeetingId'> &
+  Pick<ITranscriptSegmentStore, 'getSegmentsByMeetingId'> &
+  ISpeakerStore;
+
 const router = Router();
-const db = new Database(config.database);
-const transcriptRepo = new TranscriptRepository(db);
+const db: Queryable = new Database(config.database);
+const transcriptRepo: TranscriptQueryStore = new TranscriptRepository(db);
 
 router.use(authenticate);
 

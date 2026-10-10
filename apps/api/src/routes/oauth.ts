@@ -1,15 +1,22 @@
 import { Router } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import axios from 'axios';
-import { Database, UserRepository } from '@meeting-ai/database';
+import {
+  Database,
+  Queryable,
+  UserRepository,
+  IUserIdentityRepository,
+  IUserProfileRepository,
+} from '@meeti/database';
 import { config } from '../config';
 import { AppError } from '../middleware/error-handler';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
-const db = new Database(config.database);
-const userRepo = new UserRepository(db);
+const db: Queryable = new Database(config.database);
+const userRepo: IUserIdentityRepository & Pick<IUserProfileRepository, 'createProfile'> =
+  new UserRepository(db);
 
 // Google OAuth configuration
 const googleClient = new OAuth2Client(
