@@ -11,6 +11,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [googleStatus, setGoogleStatus] = useState<any>(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [formData, setFormData] = useState({
@@ -123,6 +126,30 @@ export default function SettingsPage() {
       console.error('Profile update error:', error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!window.confirm('This permanently deletes your account, all meetings, recordings and notes. This cannot be undone. Continue?')) {
+      return;
+    }
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await authApi.deleteAccount(deletePassword);
+      localStorage.removeItem('auth_token');
+      router.replace('/');
+    } catch (error: any) {
+      const status = error?.response?.status;
+      setDeleteError(
+        status === 401
+          ? 'Incorrect password. Please try again.'
+          : 'Could not delete your account. Please try again.'
+      );
+      console.error('Account deletion failed:', error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -402,6 +429,43 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Danger Zone */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-2 text-red-600">Danger Zone</h2>
+          <p className="text-gray-600 mb-4">
+            Permanently delete your account and all associated data (meetings, recordings,
+            transcripts and notes). This cannot be undone.
+          </p>
+          <form onSubmit={handleDeleteAccount} className="bg-white border border-red-200 rounded-lg p-6 space-y-4">
+            {deleteError && (
+              <div className="p-3 rounded bg-red-50 text-red-700 text-sm">{deleteError}</div>
+            )}
+            <div>
+              <label htmlFor="deletePassword" className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm your password
+              </label>
+              <input
+                id="deletePassword"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                autoComplete="current-password"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Your current password"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={deleting || deletePassword.length === 0}
+                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete my account'}
+              </button>
+            </div>
+          </form>
         </div>
       </main>
     </div>

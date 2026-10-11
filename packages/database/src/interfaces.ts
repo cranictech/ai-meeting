@@ -131,6 +131,7 @@ export interface IUserIdentityRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   updateLastActive(id: string): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 export interface IUserProfileRepository {

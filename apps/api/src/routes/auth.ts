@@ -12,10 +12,12 @@ import {
 import { config } from '../config';
 import { AppError } from '../middleware/error-handler';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { StorageService } from '../services/storage';
 
 const router = Router();
 const db: Queryable = new Database(config.database);
 const userRepo: IUserIdentityRepository & IUserProfileRepository = new UserRepository(db);
+const storage = new StorageService();
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -172,6 +174,45 @@ router.post('/logout', authenticate, async (req: AuthRequest, res, next) => {
     // In a production app, you would add the token to a blacklist
     // For now, we just return success - the client should remove the token
     res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const deleteAccountSchema = z.object({
+  password: z.string().min(1),
+});
+
+// Permanent account deletion (required for App Store / Play Store).
+// Requires the current password, purges stored audio, then removes the user
+// row; all user-owned tables cascade-delete via ON DELETE CASCADE.
+router.delete('/account', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const { password } = deleteAccountSchema.parse(req.body);
+
+    const user = await userRepo.findById(req.userId!);
+    if (!user) {
+      throw new AppError(404, 'User not found');
+    }
+    if (!user.password_hash) {
+      throw new AppError(400, 'This account has no password. Contact support to delete it.');
+    }
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      throw new AppError(401, 'Invalid password');
+    }
+
+    // Purge stored recordings first so no audio is orphaned in S3.
+    try {
+      await storage.deleteByPrefix(`users/${user.id}/`);
+    } catch (err) {
+      console.error('Failed to purge recordings during account deletion:', err);
+    }
+
+    await userRepo.delete(user.id);
+
+    res.json({ success: true, message: 'Account and all associated data were permanently deleted.' });
   } catch (error) {
     next(error);
   }

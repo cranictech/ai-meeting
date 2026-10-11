@@ -197,6 +197,9 @@ export const authApi = {
 
   logout: () =>
     api.post('/auth/logout'),
+
+  deleteAccount: (password: string) =>
+    api.delete<{ success: boolean; message: string }>('/auth/account', { data: { password } }),
 };
 
 export const meetingsApi = {

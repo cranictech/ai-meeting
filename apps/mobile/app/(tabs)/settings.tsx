@@ -32,6 +32,7 @@ export default function SettingsScreen() {
   const [serverUrl, setServerUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -88,6 +89,37 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    if (!deletePassword) {
+      Alert.alert('Password required', 'Enter your password to delete your account.');
+      return;
+    }
+    Alert.alert(
+      'Delete Account',
+      'This permanently deletes your account, all meetings, recordings and notes. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authApi.deleteAccount(deletePassword);
+              await AsyncStorage.removeItem('auth_token');
+              router.replace('/login');
+            } catch (err: any) {
+              if (err?.response?.status === 401) {
+                Alert.alert('Incorrect password', 'The password you entered is not correct.');
+              } else {
+                Alert.alert('Error', err?.response?.data?.error || 'Failed to delete your account.');
+              }
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -218,6 +250,29 @@ export default function SettingsScreen() {
         <Ionicons name="log-out-outline" size={18} color="#dc2626" />
         <Text style={styles.logoutButtonText}>Sign Out</Text>
       </TouchableOpacity>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionHeader, { color: '#dc2626' }]}>Delete Account</Text>
+        <Text style={styles.sublabel}>
+          Permanently remove your account and all data. This cannot be undone.
+        </Text>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Confirm your password</Text>
+          <TextInput
+            style={styles.input}
+            value={deletePassword}
+            onChangeText={setDeletePassword}
+            placeholder="Your current password"
+            placeholderTextColor="#9ca3af"
+            secureTextEntry
+            autoCapitalize="none"
+          />
+        </View>
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+          <Ionicons name="trash-outline" size={18} color="#ffffff" />
+          <Text style={styles.deleteButtonText}>Delete my account</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -373,5 +428,20 @@ const styles = StyleSheet.create({
   resetButtonText: {
     fontSize: 12,
     color: '#4b5563',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: '#dc2626',
+    marginTop: 16,
+    gap: 6,
+  },
+  deleteButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

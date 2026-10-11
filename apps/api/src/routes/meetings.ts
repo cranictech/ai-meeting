@@ -14,9 +14,11 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error-handler';
 import { queueMeeting } from '../workers/process-meeting';
 import { emailService } from '../services/email';
+import { StorageService } from '../services/storage';
 
 const router = Router();
 const db: Queryable = new Database(config.database);
+const storage = new StorageService();
 const meetingRepo: IMeetingReader & IMeetingWriter & IMeetingLifecycle & IMeetingSearch =
   new MeetingRepository(db);
 
@@ -280,6 +282,14 @@ router.delete('/:id', async (req: AuthRequest, res, next) => {
     }
     if (meeting.user_id !== req.userId) {
       throw new AppError(403, 'Access denied');
+    }
+
+    // Purge the meeting's stored audio so recordings do not linger in S3,
+    // then remove the meeting row (its transcripts/notes/etc. cascade-delete).
+    try {
+      await storage.deleteByPrefix(`users/${meeting.user_id}/meetings/${req.params.id}/`);
+    } catch (err) {
+      console.error('Failed to purge recordings for meeting', req.params.id, err);
     }
 
     await meetingRepo.delete(req.params.id);

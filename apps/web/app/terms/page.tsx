@@ -76,9 +76,10 @@ export default function Terms() {
 
       <h2 className="text-xl font-semibold pt-4">8. Retention and deletion</h2>
       <p>
-        You can delete a meeting at any time in the app. You can delete your account by{' '}
-        <Fill>in-app deletion, or "emailing support at <Fill>support email</Fill>"</Fill>.{' '}
-        See the Privacy Policy for details.
+        You can delete a meeting at any time in the app, and you can permanently delete
+        your account and all associated data from Settings &gt; Delete Account. Deleting
+        your account removes your meetings, recordings, transcripts and notes. See the
+        Privacy Policy for details.
       </p>
 
       <h2 className="text-xl font-semibold pt-4">9. Availability and changes</h2>

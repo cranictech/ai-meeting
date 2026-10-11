@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { config } from '../config';
 import * as crypto from 'crypto';
@@ -29,6 +29,7 @@ export interface FileDownloadUrlSigner {
 
 export interface IStorageService extends AudioChunkUploader, PresignedUploadSigner, FileDownloadUrlSigner {
   generateKey(userId: string, meetingId: string, filename: string): string;
+  deleteByPrefix(prefix: string): Promise<number>;
 }
 
 export class StorageService implements IStorageService {
@@ -143,5 +144,54 @@ export class StorageService implements IStorageService {
     const url = await getSignedUrl(this.s3, command, { expiresIn });
 
     return { url, key };
+  }
+
+  /**
+   * Delete every stored object under a key prefix (e.g. `users/<id>/`).
+   * Used for meeting/account data removal so audio files do not linger in S3.
+   * Returns the number of objects deleted.
+   */
+  async deleteByPrefix(prefix: string): Promise<number> {
+    if (this.useLocal) {
+      const dir = path.join(this.localStoragePath, prefix);
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+      return 0;
+    }
+
+    if (!this.s3) {
+      throw new Error('S3 client not initialized');
+    }
+
+    let deleted = 0;
+    let continuationToken: string | undefined;
+    do {
+      const list = await this.s3.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+      const objects = (list.Contents ?? [])
+        .map((o) => o.Key)
+        .filter((k): k is string => Boolean(k))
+        .map((Key) => ({ Key }));
+
+      if (objects.length > 0) {
+        await this.s3.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucket,
+            Delete: { Objects: objects, Quiet: true },
+          })
+        );
+        deleted += objects.length;
+      }
+
+      continuationToken = list.IsTruncated ? list.NextContinuationToken : undefined;
+    } while (continuationToken);
+
+    return deleted;
   }
 }

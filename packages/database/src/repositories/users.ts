@@ -25,6 +25,13 @@ export class UserRepository implements IUserRepository {
     await this.db.query('UPDATE users SET last_active_at = NOW() WHERE id = $1', [id]);
   }
 
+  async delete(id: string): Promise<void> {
+    // All user-owned tables reference users(id) ON DELETE CASCADE, so this
+    // removes meetings, transcripts, recordings rows, action items, folders,
+    // tags, oauth accounts, api keys and webhooks for the user.
+    await this.db.query('DELETE FROM users WHERE id = $1', [id]);
+  }
+
   async createProfile(userId: string, profile: Partial<Profile>): Promise<Profile> {
     const result = await this.db.queryOne<Profile>(
       `INSERT INTO profiles (user_id, full_name, country, timezone, preferred_language, output_language, date_format, time_format, use_case) 
