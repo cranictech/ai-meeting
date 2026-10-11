@@ -15,8 +15,8 @@ export class TranscriptRepository implements ITranscriptRepository {
 
   async updateStatus(id: string, status: Transcript['status']): Promise<void> {
     await this.db.query(
-      'UPDATE transcripts SET status = $1, completed_at = CASE WHEN $1 = $2 THEN NOW() ELSE completed_at END WHERE id = $3',
-      [status, 'completed', id]
+      `UPDATE transcripts SET status = $1, completed_at = CASE WHEN $2 = 'completed' THEN NOW() ELSE completed_at END WHERE id = $3`,
+      [status, status, id]
     );
   }
 

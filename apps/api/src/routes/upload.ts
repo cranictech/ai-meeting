@@ -181,7 +181,7 @@ async function handleFullUpload(req: AuthRequest, res: any, next: any) {
       recording = await meetingStore.createRecording(meetingId, key);
     } else {
       await db.query(
-        'UPDATE recordings SET storage_path = $1, updated_at = NOW() WHERE id = $2',
+        'UPDATE recordings SET storage_path = $1, uploaded_at = NOW() WHERE id = $2',
         [key, recording.id]
       );
     }

@@ -381,7 +381,7 @@ router.post('/:id/translate', async (req: AuthRequest, res, next) => {
     // Translate decisions if requested
     if (translateDecisions) {
       const decisions = await db.query(
-        'SELECT id, decision FROM decisions WHERE meeting_id = $1',
+        'SELECT id, decision FROM meeting_decisions WHERE meeting_id = $1',
         [req.params.id]
       );
 

@@ -74,8 +74,14 @@ export class MeetingRepository implements IMeetingRepository {
   }
 
   async createAudioChunk(recordingId: string, chunkIndex: number, storagePath: string): Promise<AudioChunk> {
+    // Upsert on (recording_id, chunk_index) so a retried/re-uploaded chunk
+    // overwrites the previous row instead of violating the unique constraint.
     const result = await this.db.queryOne<AudioChunk>(
-      'INSERT INTO audio_chunks (recording_id, chunk_index, storage_path) VALUES ($1, $2, $3) RETURNING *',
+      `INSERT INTO audio_chunks (recording_id, chunk_index, storage_path)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (recording_id, chunk_index)
+       DO UPDATE SET storage_path = EXCLUDED.storage_path, uploaded_at = NOW()
+       RETURNING *`,
       [recordingId, chunkIndex, storagePath]
     );
     if (!result) throw new Error('Failed to create audio chunk');
