@@ -124,7 +124,7 @@ export default function Home() {
               <h4 className="font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-gray-600">
                 <li><Link href="/about">About</Link></li>
-                <li><Link href="/contact">Contact</Link></li>
+                <li><Link href="mailto:support@meeti.org.uk">Contact</Link></li>
               </ul>
             </div>
             <div>
@@ -132,13 +132,14 @@ export default function Home() {
               <ul className="space-y-2 text-gray-600">
                 <li><Link href="/privacy">Privacy Policy</Link></li>
                 <li><Link href="/terms">Terms of Service</Link></li>
+                <li><Link href="/ai-policy">AI Policy</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-gray-600">
-                <li><Link href="/help">Help Center</Link></li>
-                <li><Link href="/docs">Documentation</Link></li>
+                <li><Link href="mailto:support@meeti.org.uk">Help Center</Link></li>
+                <li><Link href="mailto:support@meeti.org.uk">Contact Support</Link></li>
               </ul>
             </div>
           </div>
