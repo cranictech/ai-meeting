@@ -411,8 +411,8 @@ export default function RecordScreen() {
                       ? i % 3 === 0
                         ? colors.primary
                         : i % 3 === 1
-                        ? '#3b82f6'
-                        : '#60a5fa'
+                        ? '#06b6d4'
+                        : '#22d3ee'
                       : colors.border,
                 },
               ]}
