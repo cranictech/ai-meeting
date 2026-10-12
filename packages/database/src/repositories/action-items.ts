@@ -110,10 +110,10 @@ export class ActionItemRepository implements IActionItemRepository {
     );
   }
 
-  async createSummary(meetingId: string, summary: string, executiveSummary?: string, sentiment?: string, keyPoints?: string[]): Promise<MeetingSummary> {
+  async createSummary(meetingId: string, summary: string, executiveSummary?: string, sentiment?: string, keyPoints?: string[], source: 'ai' | 'template' | 'manual' = 'ai'): Promise<MeetingSummary> {
     const result = await this.db.queryOne<MeetingSummary>(
-      'INSERT INTO meeting_summaries (meeting_id, summary, executive_summary, sentiment, key_points) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [meetingId, summary, executiveSummary, sentiment, keyPoints]
+      'INSERT INTO meeting_summaries (meeting_id, summary, executive_summary, sentiment, key_points, source) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [meetingId, summary, executiveSummary, sentiment, keyPoints, source]
     );
     if (!result) throw new Error('Failed to create summary');
     return result;

@@ -31,6 +31,7 @@ import {
   slackService,
   SlackMeetingNotifier,
 } from '../services';
+import { getUsageService } from '../services/usage';
 
 let connection: IORedis | null = null;
 
@@ -72,6 +73,7 @@ const analyzer: MeetingAnalyzer = new AnalysisService();
 const notificationService: MeetingNotifier = new NotificationService(db);
 const webhookDispatcher: WebhookDispatcher = webhookService;
 const slackNotifier: SlackMeetingNotifier = slackService;
+const usage = getUsageService(db);
 
 interface MeetingJob {
   meetingId: string;
@@ -169,6 +171,21 @@ export async function processMeeting(meetingId: string): Promise<void> {
     await db.query('UPDATE meetings SET detected_languages = $1 WHERE id = $2', [Array.from(uniqueLanguages), meetingId]);
 
     await transcriptRepo.updateStatus(transcript.id, 'completed');
+
+    // Meter AI usage once per meeting; dedupe key prevents double-charging.
+    // Duration prefers stored length, then last segment end, then recording.
+    const meteredSeconds =
+      meeting.duration_seconds ||
+      (transcriptionResult.segments.length
+        ? Math.ceil(transcriptionResult.segments[transcriptionResult.segments.length - 1].end)
+        : 0) ||
+      (recording?.duration_seconds || 0);
+    try {
+      await usage.meterTranscription(meeting.user_id, meetingId, meteredSeconds);
+    } catch (meterErr) {
+      // Metering failure must not abort the analysis.
+      console.error(`Failed to meter transcription usage for ${meetingId}:`, meterErr);
+    }
 
     // 6. Content analysis
     const analysis = await analyzer.analyzeMeeting(

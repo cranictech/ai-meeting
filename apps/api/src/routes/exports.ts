@@ -4,11 +4,13 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error-handler';
 import { Database, Queryable, MeetingRepository, IMeetingReader } from '@meeti/database';
 import { config } from '../config';
+import { getUsageService } from '../services/usage';
 
 const router = Router();
 const pdfExporter: PdfExporter = new ExportService();
 const docxExporter: DocxExporter = new ExportService();
 const db: Queryable = new Database(config.database);
+const usage = getUsageService(db);
 const meetingReader: IMeetingReader = new MeetingRepository(db);
 
 router.use(authenticate);
@@ -25,6 +27,9 @@ router.get('/meeting/:meetingId/pdf', async (req: AuthRequest, res, next) => {
       throw new AppError(403, 'Access denied');
     }
 
+    // Check export allowance, then meter the download.
+    await usage.assertCanExport(req.userId!);
+
     const [summary, decisions, actionItems, transcript] = await Promise.all([
       db.queryOne('SELECT * FROM meeting_summaries WHERE meeting_id = $1 ORDER BY created_at DESC LIMIT 1', [meetingId]),
       db.query('SELECT * FROM meeting_decisions WHERE meeting_id = $1 ORDER BY created_at ASC', [meetingId]),
@@ -39,6 +44,8 @@ router.get('/meeting/:meetingId/pdf', async (req: AuthRequest, res, next) => {
       actionItems || [],
       transcript || []
     );
+
+    await usage.meterExport(req.userId!, meetingId, 'pdf');
 
     const safeTitle = (meeting.title || 'meeting-notes')
       .toLowerCase()
@@ -65,6 +72,9 @@ router.get('/meeting/:meetingId/docx', async (req: AuthRequest, res, next) => {
       throw new AppError(403, 'Access denied');
     }
 
+    // Check export allowance, then meter the download.
+    await usage.assertCanExport(req.userId!);
+
     const [summary, decisions, actionItems, transcript] = await Promise.all([
       db.queryOne('SELECT * FROM meeting_summaries WHERE meeting_id = $1 ORDER BY created_at DESC LIMIT 1', [meetingId]),
       db.query('SELECT * FROM meeting_decisions WHERE meeting_id = $1 ORDER BY created_at ASC', [meetingId]),
@@ -79,6 +89,8 @@ router.get('/meeting/:meetingId/docx', async (req: AuthRequest, res, next) => {
       actionItems || [],
       transcript || []
     );
+
+    await usage.meterExport(req.userId!, meetingId, 'docx');
 
     const safeTitle = (meeting.title || 'meeting-notes')
       .toLowerCase()

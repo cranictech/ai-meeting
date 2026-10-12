@@ -41,11 +41,24 @@ export const config = {
     sttProvider: process.env.STT_PROVIDER || 'openai',
     llmProvider: process.env.LLM_PROVIDER || 'openai',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
-    // Model names are env-configurable so a retired/preview alias can be
-    // swapped without a code change. Defaults avoid preview aliases.
+    // Model names are configurable via env.
     transcriptionModel: process.env.OPENAI_TRANSCRIPTION_MODEL || 'whisper-1',
     analysisModel: process.env.OPENAI_ANALYSIS_MODEL || 'gpt-4o',
     analysisFallbackModel: process.env.OPENAI_ANALYSIS_FALLBACK_MODEL || 'gpt-4o-mini',
+  },
+
+  // Server-side limits enforced before AI calls.
+  limits: {
+    // Max recording length (default 2h).
+    maxRecordingSeconds: parseInt(process.env.MAX_RECORDING_SECONDS || '7200', 10),
+    // Max upload size (default 200MB).
+    maxUploadBytes: parseInt(process.env.MAX_UPLOAD_BYTES || String(200 * 1024 * 1024), 10),
+  },
+
+  // Per-operation cost estimates for reporting only.
+  costs: {
+    transcriptionUsdPerMinute: parseFloat(process.env.AI_TRANSCRIPTION_USD_PER_MIN || '0.006'),
+    analysisUsdPerCall: parseFloat(process.env.AI_ANALYSIS_USD_PER_CALL || '0.01'),
   },
 
   mail: {

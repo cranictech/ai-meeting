@@ -15,11 +15,13 @@ import {
 import { config } from '../config';
 import { AppError } from '../middleware/error-handler';
 import { queueMeeting } from '../workers/process-meeting';
+import { getUsageService } from '../services/usage';
 import * as multer from 'multer';
 
 const router = Router();
 const storage: PresignedUploadSigner & AudioChunkUploader = new StorageService();
 const db: Queryable = new Database(config.database);
+const usage = getUsageService(db);
 const meetingStore: IMeetingReader & IAudioRecordingStore = new MeetingRepository(db);
 
 // Configure multer for local file uploads
@@ -195,12 +197,14 @@ async function handleFullUpload(req: AuthRequest, res: any, next: any) {
 
     await meetingStore.createAudioChunk(recording.id, 0, key);
 
-    // Persist the user's chosen spoken language before queueing so the worker
-    // transcribes with it instead of relying on automatic detection.
+    // Save the chosen spoken language before queueing.
     const language = (req.body.language || '').trim();
     if (language && language !== 'auto') {
       await db.query('UPDATE meetings SET source_language = $1 WHERE id = $2', [language, meetingId]);
     }
+
+    // Gate AI spend before queueing.
+    await usage.assertCanProcessRecording(req.userId!, 0);
 
     // Queue for processing
     await queueMeeting(meetingId);

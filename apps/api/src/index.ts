@@ -6,6 +6,7 @@ import { errorHandler } from './middleware/error-handler';
 import { authRouter } from './routes/auth';
 import { oauthRouter } from './routes/oauth';
 import { meetingsRouter } from './routes/meetings';
+import { notesRouter } from './routes/notes';
 import { actionItemsRouter } from './routes/action-items';
 import { uploadRouter } from './routes/upload';
 import { transcriptsRouter } from './routes/transcripts';
@@ -35,6 +36,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', authRouter);
 app.use('/oauth', oauthRouter);
 app.use('/meetings', meetingsRouter);
+app.use('/notes', notesRouter);
 app.use('/action-items', actionItemsRouter);
 app.use('/upload', uploadRouter);
 app.use('/transcripts', transcriptsRouter);

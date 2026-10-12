@@ -15,10 +15,12 @@ import { AppError } from '../middleware/error-handler';
 import { queueMeeting } from '../workers/process-meeting';
 import { emailService } from '../services/email';
 import { StorageService } from '../services/storage';
+import { getUsageService } from '../services/usage';
 
 const router = Router();
 const db: Queryable = new Database(config.database);
 const storage = new StorageService();
+const usage = getUsageService(db);
 const meetingRepo: IMeetingReader & IMeetingWriter & IMeetingLifecycle & IMeetingSearch =
   new MeetingRepository(db);
 
@@ -164,6 +166,12 @@ router.post('/:id/stop', async (req: AuthRequest, res, next) => {
       throw new AppError(403, 'Access denied');
     }
 
+    // Enforce AI allowance before spending credit, estimated from start time.
+    const estimatedSeconds = meeting.started_at
+      ? Math.floor((Date.now() - new Date(meeting.started_at).getTime()) / 1000)
+      : 0;
+    await usage.assertCanProcessRecording(req.userId!, estimatedSeconds);
+
     await meetingRepo.stopRecording(req.params.id);
     await queueMeeting(req.params.id);
 
@@ -182,6 +190,9 @@ router.post('/:id/process', async (req: AuthRequest, res, next) => {
     if (meeting.user_id !== req.userId) {
       throw new AppError(403, 'Access denied');
     }
+
+    // Re-processing is gated on remaining allowance.
+    await usage.assertCanProcessRecording(req.userId!, meeting.duration_seconds || 0);
 
     await queueMeeting(req.params.id);
     res.json({ status: 'processing' });

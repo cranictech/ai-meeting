@@ -78,12 +78,18 @@ CREATE TABLE meetings (
   ended_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Free manual-note support (nullable; recording-based meetings leave these unset)
+  content TEXT,
+  agenda TEXT,
+  objectives TEXT,
+  meeting_date TIMESTAMPTZ,
   metadata JSONB DEFAULT '{}'
 );
 
 CREATE INDEX idx_meetings_user ON meetings(user_id, created_at DESC);
 CREATE INDEX idx_meetings_org ON meetings(organization_id, created_at DESC);
 CREATE INDEX idx_meetings_status ON meetings(status);
+CREATE INDEX idx_meetings_user_content ON meetings(user_id, created_at DESC) WHERE content IS NOT NULL;
 
 -- Recordings and Audio
 CREATE TABLE recordings (
@@ -182,6 +188,8 @@ CREATE TABLE meeting_summaries (
   executive_summary TEXT,
   sentiment VARCHAR(20),
   key_points TEXT[],
+  -- Provenance so template/manual formatting is never shown as AI output
+  source VARCHAR(20) DEFAULT 'ai',
   version INTEGER DEFAULT 1,
   model_version VARCHAR(50),
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -385,11 +393,15 @@ CREATE TABLE usage_records (
   unit VARCHAR(20),
   cost DECIMAL(10,4),
   metadata JSONB DEFAULT '{}',
+  dedupe_key TEXT,
   recorded_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_usage_user_date ON usage_records(user_id, recorded_at);
 CREATE INDEX idx_usage_org_date ON usage_records(organization_id, recorded_at);
+CREATE INDEX idx_usage_user_resource_period ON usage_records(user_id, resource_type, recorded_at DESC);
+-- A non-null dedupe_key is globally unique so retried AI jobs meter only once.
+CREATE UNIQUE INDEX idx_usage_dedupe_key ON usage_records(dedupe_key) WHERE dedupe_key IS NOT NULL;
 
 -- Notifications
 CREATE TABLE notifications (

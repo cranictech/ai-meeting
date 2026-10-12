@@ -6,14 +6,20 @@ export class MeetingRepository implements IMeetingRepository {
 
   async create(userId: string, data: Partial<Meeting>): Promise<Meeting> {
     const result = await this.db.queryOne<Meeting>(
-      `INSERT INTO meetings (user_id, title, meeting_type, output_language, recording_quality, metadata) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      `INSERT INTO meetings (user_id, title, meeting_type, output_language, recording_quality, content, agenda, objectives, meeting_date, status, metadata) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
         userId,
         data.title,
         data.meeting_type || 'business',
         data.output_language || 'en',
         data.recording_quality || 'standard',
+        data.content ?? null,
+        data.agenda ?? null,
+        data.objectives ?? null,
+        data.meeting_date ?? null,
+        // Notes with content start as completed; recordings start as draft.
+        data.status || (data.content ? 'completed' : 'draft'),
         JSON.stringify(data.metadata ?? {}),
       ]
     );
@@ -74,8 +80,7 @@ export class MeetingRepository implements IMeetingRepository {
   }
 
   async createAudioChunk(recordingId: string, chunkIndex: number, storagePath: string): Promise<AudioChunk> {
-    // Upsert on (recording_id, chunk_index) so a retried/re-uploaded chunk
-    // overwrites the previous row instead of violating the unique constraint.
+    // Upsert so a re-uploaded chunk overwrites the prior row.
     const result = await this.db.queryOne<AudioChunk>(
       `INSERT INTO audio_chunks (recording_id, chunk_index, storage_path)
        VALUES ($1, $2, $3)
@@ -115,6 +120,9 @@ export class MeetingRepository implements IMeetingRepository {
        WHERE m.user_id = $1 AND (
          m.title ILIKE $2 OR
          m.meeting_type ILIKE $2 OR
+         m.content ILIKE $2 OR
+         m.agenda ILIKE $2 OR
+         m.objectives ILIKE $2 OR
          ms.summary ILIKE $2 OR
          ms.executive_summary ILIKE $2 OR
          md.decision ILIKE $2 OR
@@ -146,6 +154,26 @@ export class MeetingRepository implements IMeetingRepository {
     if (data.duration_seconds !== undefined) {
       fields.push(`duration_seconds = $${idx++}`);
       values.push(data.duration_seconds);
+    }
+    if (data.content !== undefined) {
+      fields.push(`content = $${idx++}`);
+      values.push(data.content);
+    }
+    if (data.agenda !== undefined) {
+      fields.push(`agenda = $${idx++}`);
+      values.push(data.agenda);
+    }
+    if (data.objectives !== undefined) {
+      fields.push(`objectives = $${idx++}`);
+      values.push(data.objectives);
+    }
+    if (data.meeting_date !== undefined) {
+      fields.push(`meeting_date = $${idx++}`);
+      values.push(data.meeting_date);
+    }
+    if (data.status !== undefined) {
+      fields.push(`status = $${idx++}`);
+      values.push(data.status);
     }
     if (data.metadata !== undefined) {
       fields.push(`metadata = $${idx++}`);

@@ -40,6 +40,11 @@ export interface Meeting {
   ended_at?: Date;
   created_at: Date;
   updated_at: Date;
+  // Manual-note fields (nullable; unset for recording-only meetings)
+  content?: string | null;
+  agenda?: string | null;
+  objectives?: string | null;
+  meeting_date?: Date | null;
   metadata?: any;
 }
 
@@ -121,6 +126,8 @@ export interface MeetingSummary {
   meeting_id: string;
   summary: string;
   executive_summary?: string;
+  // Provenance: 'ai' | 'template' | 'manual'.
+  source?: 'ai' | 'template' | 'manual';
   version: number;
   model_version?: string;
   created_at: Date;

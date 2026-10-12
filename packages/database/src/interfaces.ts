@@ -81,7 +81,8 @@ export interface IMeetingSummaryStore {
     summary: string,
     executiveSummary?: string,
     sentiment?: string,
-    keyPoints?: string[]
+    keyPoints?: string[],
+    source?: 'ai' | 'template' | 'manual'
   ): Promise<MeetingSummary>;
   getSummaryByMeeting(meetingId: string): Promise<MeetingSummary | null>;
 }
