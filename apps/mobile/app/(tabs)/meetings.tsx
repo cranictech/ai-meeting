@@ -11,12 +11,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme, type Colors } from '../../theme';
 import { meetingsApi, type Meeting } from '../../lib/api';
 
 type StatusFilter = 'all' | 'completed' | 'processing' | 'draft';
 
 export default function MeetingsScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,23 +63,19 @@ export default function MeetingsScreen() {
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const getStatusColor = (status: Meeting['status']) => {
     switch (status) {
       case 'completed':
-        return { bg: '#dcfce7', text: '#166534', label: 'Completed' };
+        return { bg: colors.successSoft, text: colors.success, label: 'Completed' };
       case 'processing':
-        return { bg: '#fef3c7', text: '#92400e', label: 'Processing' };
+        return { bg: colors.warningSoft, text: colors.warning, label: 'Processing' };
       case 'recording':
-        return { bg: '#fee2e2', text: '#991b1b', label: 'Recording' };
+        return { bg: colors.dangerSoft, text: colors.danger, label: 'Recording' };
       default:
-        return { bg: '#f3f4f6', text: '#374151', label: 'Draft' };
+        return { bg: colors.neutralSoft, text: colors.textMuted, label: 'Draft' };
     }
   };
 
@@ -102,9 +101,7 @@ export default function MeetingsScreen() {
         style={[styles.filterChip, isActive && styles.filterChipActive]}
         onPress={() => setActiveFilter(filter)}
       >
-        <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-          {label}
-        </Text>
+        <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{label}</Text>
       </TouchableOpacity>
     );
   };
@@ -118,29 +115,23 @@ export default function MeetingsScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.meetingCardHeader}>
-          <Text style={styles.meetingTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
+          <Text style={styles.meetingTitle} numberOfLines={1}>{item.title}</Text>
           <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-            <Text style={[styles.statusText, { color: status.text }]}>
-              {status.label}
-            </Text>
+            <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
           </View>
         </View>
         <View style={styles.meetingMetaRow}>
           <View style={styles.metaItem}>
-            <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+            <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
             <Text style={styles.metaText}>{formatDate(item.created_at)}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={14} color="#6b7280" />
-            <Text style={styles.metaText}>
-              {formatDuration(item.duration_seconds)}
-            </Text>
+            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+            <Text style={styles.metaText}>{formatDuration(item.duration_seconds)}</Text>
           </View>
           {item.output_language && (
             <View style={styles.metaItem}>
-              <Ionicons name="globe-outline" size={14} color="#6b7280" />
+              <Ionicons name="globe-outline" size={14} color={colors.textMuted} />
               <Text style={styles.metaText}>{item.output_language.toUpperCase()}</Text>
             </View>
           )}
@@ -152,7 +143,7 @@ export default function MeetingsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -160,17 +151,17 @@ export default function MeetingsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.searchBarContainer}>
-        <Ionicons name="search" size={18} color="#9ca3af" style={styles.searchIcon} />
+        <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Filter meetings by title..."
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color="#9ca3af" />
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -187,22 +178,15 @@ export default function MeetingsScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderMeetingCard}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={48} color="#9ca3af" />
+            <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
             <Text style={styles.emptyTitle}>No meetings found</Text>
             <Text style={styles.emptySubtitle}>
-              {searchQuery
-                ? 'Try adjusting your search query or filter.'
-                : 'Tap below to create a new meeting.'}
+              {searchQuery ? 'Try adjusting your search query or filter.' : 'Tap below to create a new meeting.'}
             </Text>
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => router.push('/meetings/new')}
-            >
+            <TouchableOpacity style={styles.createButton} onPress={() => router.push('/meetings/new')}>
               <Text style={styles.createButtonText}>Create New Meeting</Text>
             </TouchableOpacity>
           </View>
@@ -212,139 +196,56 @@ export default function MeetingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-  },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#111827',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  filterChipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  filterChipText: {
-    fontSize: 13,
-    color: '#4b5563',
-    fontWeight: '500',
-  },
-  filterChipTextActive: {
-    color: '#ffffff',
-  },
-  listContent: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  meetingCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  meetingCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  meetingTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-    marginRight: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  meetingMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 12,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 20,
-  },
-  createButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  createButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+const createStyles = (c: Colors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.background },
+    searchBarContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.card,
+      marginHorizontal: 16,
+      marginTop: 12,
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    searchIcon: { marginRight: 8 },
+    searchInput: { flex: 1, fontSize: 14, color: c.text },
+    filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+    filterChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    filterChipActive: { backgroundColor: c.primary, borderColor: c.primary },
+    filterChipText: { fontSize: 13, color: c.textMuted, fontWeight: '500' },
+    filterChipTextActive: { color: '#ffffff' },
+    listContent: { padding: 16, paddingTop: 8 },
+    meetingCard: {
+      backgroundColor: c.card,
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    meetingCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    meetingTitle: { fontSize: 15, fontWeight: '600', color: c.text, flex: 1, marginRight: 8 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+    statusText: { fontSize: 11, fontWeight: '600' },
+    meetingMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    metaText: { fontSize: 12, color: c.textMuted },
+    emptyContainer: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+    emptyTitle: { fontSize: 16, fontWeight: '600', color: c.text, marginTop: 12 },
+    emptySubtitle: { fontSize: 13, color: c.textMuted, textAlign: 'center', marginTop: 4, marginBottom: 20 },
+    createButton: { backgroundColor: c.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+    createButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  });

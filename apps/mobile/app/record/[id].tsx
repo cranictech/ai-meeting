@@ -20,12 +20,15 @@ import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import api, { getActiveApiUrl } from '../../lib/api';
+import { useTheme, makeStyles, type Colors } from '../../theme';
 
 const NUM_BARS = 28;
 
 export default function RecordScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const meetingId = params.id as string;
   const meetingTitle = (params.title as string) || 'Meeting';
 
@@ -347,13 +350,13 @@ export default function RecordScreen() {
       {/* Network Status Banners */}
       {isOffline && (
         <View style={styles.offlineBanner}>
-          <Ionicons name="cloud-offline-outline" size={16} color="#92400e" />
+          <Ionicons name="cloud-offline-outline" size={16} color={colors.warning} />
           <Text style={styles.offlineText}>Offline — saving locally</Text>
         </View>
       )}
       {pendingUploads > 0 && !isOffline && (
         <View style={styles.syncBanner}>
-          <Ionicons name="cloud-upload-outline" size={16} color="#166534" />
+          <Ionicons name="cloud-upload-outline" size={16} color={colors.success} />
           <Text style={styles.syncText}>Syncing {pendingUploads} recording(s)…</Text>
         </View>
       )}
@@ -406,11 +409,11 @@ export default function RecordScreen() {
                   backgroundColor:
                     isRecording && !isPaused
                       ? i % 3 === 0
-                        ? '#2563eb'
+                        ? colors.primary
                         : i % 3 === 1
                         ? '#3b82f6'
                         : '#60a5fa'
-                      : '#e5e7eb',
+                      : colors.border,
                 },
               ]}
             />
@@ -494,40 +497,41 @@ export default function RecordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = makeStyles((colors: Colors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   offlineBanner: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.warningSoft,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#fde68a',
+    borderBottomColor: colors.border,
   },
   offlineText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#92400e',
+    color: colors.warning,
   },
   syncBanner: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.successSoft,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#86efac',
+    borderBottomColor: colors.border,
   },
   syncText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#166534',
+    color: colors.success,
   },
   content: {
     flex: 1,
@@ -540,7 +544,7 @@ const styles = StyleSheet.create({
   meetingTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#e2e8f0',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 20,
     paddingHorizontal: 16,
@@ -554,7 +558,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   statusReady: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: colors.neutralSoft,
   },
   statusRecording: {
     backgroundColor: 'rgba(220, 38, 38, 0.15)',
@@ -576,7 +580,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: colors.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
@@ -586,7 +590,7 @@ const styles = StyleSheet.create({
   timer: {
     fontSize: 62,
     fontWeight: '300',
-    color: '#f8fafc',
+    color: colors.text,
     letterSpacing: -2,
     marginBottom: 32,
     fontVariant: ['tabular-nums'],
@@ -607,7 +611,7 @@ const styles = StyleSheet.create({
   },
   listeningText: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 36,
     paddingHorizontal: 20,
@@ -616,21 +620,16 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   startButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
   },
   startButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -640,7 +639,7 @@ const styles = StyleSheet.create({
   },
   pauseButton: {
     flex: 1,
-    backgroundColor: '#d97706',
+    backgroundColor: colors.warning,
     paddingVertical: 18,
     borderRadius: 14,
     flexDirection: 'row',
@@ -650,7 +649,7 @@ const styles = StyleSheet.create({
   },
   resumeButton: {
     flex: 1,
-    backgroundColor: '#16a34a',
+    backgroundColor: colors.success,
     paddingVertical: 18,
     borderRadius: 14,
     flexDirection: 'row',
@@ -660,7 +659,7 @@ const styles = StyleSheet.create({
   },
   stopButton: {
     flex: 1,
-    backgroundColor: '#dc2626',
+    backgroundColor: colors.danger,
     paddingVertical: 18,
     borderRadius: 14,
     flexDirection: 'row',
@@ -669,16 +668,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   controlButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   consentNote: {
     marginTop: 24,
     fontSize: 11,
-    color: '#475569',
+    color: colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 16,
     lineHeight: 16,
   },
-});
+  }),
+);

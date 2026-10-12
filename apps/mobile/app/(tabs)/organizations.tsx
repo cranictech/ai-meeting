@@ -12,9 +12,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { organizationsApi } from '../../lib/api';
+import { useTheme, makeStyles, type Colors } from '../../theme';
 
 export default function OrganizationsScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -64,7 +67,7 @@ export default function OrganizationsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -80,13 +83,13 @@ export default function OrganizationsScreen() {
         style={styles.createButton}
         onPress={() => setShowCreateModal(true)}
       >
-        <Ionicons name="add-circle-outline" size={20} color="#ffffff" />
+        <Ionicons name="add-circle-outline" size={20} color={colors.onPrimary} />
         <Text style={styles.createButtonText}>Create Team</Text>
       </TouchableOpacity>
 
       {organizations.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="business-outline" size={48} color="#9ca3af" />
+          <Ionicons name="business-outline" size={48} color={colors.textMuted} />
           <Text style={styles.emptyTitle}>No teams yet</Text>
           <Text style={styles.emptySubtitle}>
             Create your first team to collaborate with others
@@ -97,7 +100,7 @@ export default function OrganizationsScreen() {
           <View key={org.id} style={styles.orgCard}>
             <View style={styles.orgHeader}>
               <View style={styles.orgIcon}>
-                <Ionicons name="business" size={24} color="#2563eb" />
+                <Ionicons name="business" size={24} color={colors.primary} />
               </View>
               <View style={styles.orgInfo}>
                 <Text style={styles.orgName}>{org.name}</Text>
@@ -122,7 +125,7 @@ export default function OrganizationsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Team</Text>
               <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -133,7 +136,7 @@ export default function OrganizationsScreen() {
                 value={orgName}
                 onChangeText={setOrgName}
                 placeholder="e.g., Engineering Team"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textMuted}
               />
             </View>
 
@@ -144,7 +147,7 @@ export default function OrganizationsScreen() {
                 value={orgSlug}
                 onChangeText={setOrgSlug}
                 placeholder="e.g., engineering-team"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
               />
             </View>
@@ -155,7 +158,7 @@ export default function OrganizationsScreen() {
               disabled={creating}
             >
               {creating ? (
-                <ActivityIndicator color="#ffffff" size="small" />
+                <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
                 <Text style={styles.createModalButtonText}>Create Team</Text>
               )}
@@ -167,180 +170,182 @@ export default function OrganizationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-  },
-  header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2563eb',
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginBottom: 20,
-    gap: 8,
-  },
-  createButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyState: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 12,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  orgCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 12,
-  },
-  orgHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  orgIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  orgInfo: {
-    flex: 1,
-  },
-  orgName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  orgSlug: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  orgActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  actionButtonSecondary: {
-    backgroundColor: '#eff6ff',
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    width: '100%',
-    maxWidth: 320,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#111827',
-  },
-  createModalButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  createModalButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const createStyles = makeStyles((colors: Colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 40,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      marginBottom: 20,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.textMuted,
+      marginTop: 4,
+    },
+    createButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      paddingVertical: 14,
+      borderRadius: 10,
+      marginBottom: 20,
+      gap: 8,
+    },
+    createButtonText: {
+      color: colors.onPrimary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    emptyState: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 32,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 12,
+    },
+    emptySubtitle: {
+      fontSize: 13,
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: 4,
+    },
+    orgCard: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 12,
+    },
+    orgHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    orgIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primarySoft,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    orgInfo: {
+      flex: 1,
+    },
+    orgName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    orgSlug: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    orgActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    actionButton: {
+      flex: 1,
+      backgroundColor: colors.neutralSoft,
+      paddingVertical: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    actionButtonSecondary: {
+      backgroundColor: colors.primarySoft,
+    },
+    actionButtonText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    modalOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 20,
+      width: '100%',
+      maxWidth: 320,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    formGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 6,
+    },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: colors.text,
+    },
+    createModalButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    createModalButtonText: {
+      color: colors.onPrimary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  }),
+);

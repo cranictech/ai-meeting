@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme, type Colors } from '../../theme';
 import { authApi, getActiveApiUrl, setCustomApiUrl, DEFAULT_API_URL, type UserProfileResponse } from '../../lib/api';
 
 const LANGUAGES = [
@@ -24,6 +25,8 @@ const LANGUAGES = [
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { colors, theme, setTheme } = useTheme();
+  const styles = createStyles(colors);
   const [profileData, setProfileData] = useState<UserProfileResponse | null>(null);
   const [fullName, setFullName] = useState('');
   const [country, setCountry] = useState('');
@@ -125,7 +128,7 @@ export default function SettingsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -134,11 +137,32 @@ export default function SettingsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.profileHeader}>
         <View style={styles.avatarBox}>
-          <Ionicons name="person" size={28} color="#2563eb" />
+          <Ionicons name="person" size={28} color={colors.primary} />
         </View>
         <View style={styles.profileHeaderText}>
           <Text style={styles.emailText}>{profileData?.user.email}</Text>
           <Text style={styles.roleText}>Personal Account</Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionHeader}>Appearance</Text>
+        <Text style={styles.sublabel}>Choose how Meeti looks</Text>
+        <View style={styles.themeRow}>
+          <TouchableOpacity
+            style={[styles.themeOption, theme === 'light' && styles.themeOptionActive]}
+            onPress={() => setTheme('light')}
+          >
+            <Ionicons name="sunny-outline" size={18} color={theme === 'light' ? colors.primary : colors.textMuted} />
+            <Text style={[styles.themeOptionText, theme === 'light' && styles.themeOptionTextActive]}>Light</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.themeOption, theme === 'dark' && styles.themeOptionActive]}
+            onPress={() => setTheme('dark')}
+          >
+            <Ionicons name="moon-outline" size={18} color={theme === 'dark' ? colors.primary : colors.textMuted} />
+            <Text style={[styles.themeOptionText, theme === 'dark' && styles.themeOptionTextActive]}>Dark</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -152,7 +176,7 @@ export default function SettingsScreen() {
             value={fullName}
             onChangeText={setFullName}
             placeholder="Your full name"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textMuted}
           />
         </View>
 
@@ -163,7 +187,7 @@ export default function SettingsScreen() {
             value={country}
             onChangeText={setCountry}
             placeholder="e.g. Uganda, Kenya, United States"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textMuted}
           />
         </View>
 
@@ -174,7 +198,7 @@ export default function SettingsScreen() {
             value={timezone}
             onChangeText={setTimezone}
             placeholder="e.g. Africa/Kampala, UTC"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textMuted}
           />
         </View>
       </View>
@@ -190,16 +214,13 @@ export default function SettingsScreen() {
             value={serverUrl}
             onChangeText={setServerUrl}
             placeholder="http://192.168.x.x:3000 or https://..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
           />
         </View>
 
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={() => setServerUrl(DEFAULT_API_URL)}
-        >
+        <TouchableOpacity style={styles.resetButton} onPress={() => setServerUrl(DEFAULT_API_URL)}>
           <Text style={styles.resetButtonText}>Reset to Default ({DEFAULT_API_URL})</Text>
         </TouchableOpacity>
       </View>
@@ -217,28 +238,17 @@ export default function SettingsScreen() {
                 style={[styles.languageChip, isSelected && styles.languageChipSelected]}
                 onPress={() => setOutputLanguage(lang.code)}
               >
-                <Text
-                  style={[
-                    styles.languageChipText,
-                    isSelected && styles.languageChipTextSelected,
-                  ]}
-                >
+                <Text style={[styles.languageChipText, isSelected && styles.languageChipTextSelected]}>
                   {lang.label}
                 </Text>
-                {isSelected && (
-                  <Ionicons name="checkmark-circle" size={16} color="#2563eb" />
-                )}
+                {isSelected && <Ionicons name="checkmark-circle" size={16} color={colors.primary} />}
               </TouchableOpacity>
             );
           })}
         </View>
       </View>
 
-      <TouchableOpacity
-        style={styles.saveButton}
-        onPress={handleSave}
-        disabled={saving}
-      >
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
         {saving ? (
           <ActivityIndicator color="#ffffff" size="small" />
         ) : (
@@ -247,12 +257,12 @@ export default function SettingsScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Ionicons name="log-out-outline" size={18} color="#dc2626" />
+        <Ionicons name="log-out-outline" size={18} color={colors.danger} />
         <Text style={styles.logoutButtonText}>Sign Out</Text>
       </TouchableOpacity>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionHeader, { color: '#dc2626' }]}>Delete Account</Text>
+        <Text style={[styles.sectionHeader, { color: colors.danger }]}>Delete Account</Text>
         <Text style={styles.sublabel}>
           Permanently remove your account and all data. This cannot be undone.
         </Text>
@@ -263,7 +273,7 @@ export default function SettingsScreen() {
             value={deletePassword}
             onChangeText={setDeletePassword}
             placeholder="Your current password"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textMuted}
             secureTextEntry
             autoCapitalize="none"
           />
@@ -277,171 +287,124 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 20,
-  },
-  avatarBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  profileHeaderText: {
-    flex: 1,
-  },
-  emailText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  roleText: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 16,
-  },
-  sectionHeader: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  sublabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 12,
-  },
-  formGroup: {
-    marginTop: 12,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#111827',
-  },
-  languageOptions: {
-    gap: 8,
-    marginTop: 4,
-  },
-  languageChip: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
-  },
-  languageChipSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
-  },
-  languageChipText: {
-    fontSize: 14,
-    color: '#374151',
-  },
-  languageChipTextSelected: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  saveButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#fee2e2',
-    backgroundColor: '#fef2f2',
-    gap: 6,
-  },
-  logoutButtonText: {
-    color: '#dc2626',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  resetButton: {
-    marginTop: 10,
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-  },
-  resetButtonText: {
-    fontSize: 12,
-    color: '#4b5563',
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: '#dc2626',
-    marginTop: 16,
-    gap: 6,
-  },
-  deleteButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
+const createStyles = (c: Colors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    contentContainer: { padding: 16, paddingBottom: 40 },
+    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.background },
+    profileHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.card,
+      padding: 16,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginBottom: 20,
+    },
+    avatarBox: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: c.primarySoft,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 14,
+    },
+    profileHeaderText: { flex: 1 },
+    emailText: { fontSize: 15, fontWeight: '600', color: c.text },
+    roleText: { fontSize: 12, color: c.textMuted, marginTop: 2 },
+    themeRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    themeOption: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.inputBg,
+    },
+    themeOptionActive: { borderColor: c.primary, backgroundColor: c.primarySoft },
+    themeOptionText: { fontSize: 14, color: c.textMuted, fontWeight: '500' },
+    themeOptionTextActive: { color: c.primary, fontWeight: '600' },
+    section: {
+      backgroundColor: c.card,
+      borderRadius: 10,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginBottom: 16,
+    },
+    sectionHeader: { fontSize: 15, fontWeight: '600', color: c.text, marginBottom: 4 },
+    sublabel: { fontSize: 12, color: c.textMuted, marginBottom: 12 },
+    formGroup: { marginTop: 12 },
+    label: { fontSize: 13, fontWeight: '500', color: c.text, marginBottom: 6 },
+    input: {
+      backgroundColor: c.inputBg,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: c.text,
+    },
+    languageOptions: { gap: 8, marginTop: 4 },
+    languageChip: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.inputBg,
+    },
+    languageChipSelected: { borderColor: c.primary, backgroundColor: c.primarySoft },
+    languageChipText: { fontSize: 14, color: c.text },
+    languageChipTextSelected: { color: c.primary, fontWeight: '600' },
+    saveButton: {
+      backgroundColor: c.primary,
+      paddingVertical: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    saveButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+    logoutButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: c.dangerSoft,
+      backgroundColor: c.dangerSoft,
+      gap: 6,
+    },
+    logoutButtonText: { color: c.danger, fontSize: 15, fontWeight: '600' },
+    resetButton: {
+      marginTop: 10,
+      alignSelf: 'flex-start',
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 6,
+      backgroundColor: c.neutralSoft,
+    },
+    resetButtonText: { fontSize: 12, color: c.textMuted },
+    deleteButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderRadius: 8,
+      backgroundColor: c.danger,
+      marginTop: 16,
+      gap: 6,
+    },
+    deleteButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+  });

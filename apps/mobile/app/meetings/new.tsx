@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { meetingsApi } from '../../lib/api';
+import { useTheme, makeStyles, type Colors } from '../../theme';
 
 const MEETING_TYPES = [
   'Business Meeting',
@@ -53,6 +54,8 @@ const LANGUAGES = [
 
 export default function NewMeetingScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [title, setTitle] = useState('');
   const [meetingType, setMeetingType] = useState('Business Meeting');
   const [outputLanguage, setOutputLanguage] = useState('en');
@@ -103,7 +106,7 @@ export default function NewMeetingScreen() {
           <TextInput
             style={styles.input}
             placeholder="e.g. Q4 Strategy Review"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textMuted}
             value={title}
             onChangeText={setTitle}
             autoFocus
@@ -144,7 +147,7 @@ export default function NewMeetingScreen() {
             <TextInput
               style={styles.input}
               placeholder={selectedPlatform.placeholder}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textMuted}
               value={meetingLink}
               onChangeText={setMeetingLink}
               autoCapitalize="none"
@@ -189,7 +192,7 @@ export default function NewMeetingScreen() {
                     {lang.label}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark-circle" size={16} color="#2563eb" />
+                    <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               );
@@ -205,10 +208,10 @@ export default function NewMeetingScreen() {
         activeOpacity={0.85}
       >
         {creating ? (
-          <ActivityIndicator color="#ffffff" />
+          <ActivityIndicator color={colors.onPrimary} />
         ) : (
           <View style={styles.buttonContent}>
-            <Ionicons name="mic" size={20} color="#ffffff" />
+            <Ionicons name="mic" size={20} color={colors.onPrimary} />
             <Text style={styles.startButtonText}>
               {selectedPlatform.requiresLink ? 'Join & Start Recording' : 'Start Recording'}
             </Text>
@@ -219,124 +222,121 @@ export default function NewMeetingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  formGroup: {
-    marginBottom: 18,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#111827',
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  platformHint: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 8,
-    lineHeight: 17,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  chipSelected: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#2563eb',
-  },
-  chipText: {
-    fontSize: 13,
-    color: '#4b5563',
-  },
-  chipTextSelected: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  languagesContainer: {
-    gap: 8,
-  },
-  langChip: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  langChipSelected: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#2563eb',
-  },
-  langText: {
-    fontSize: 14,
-    color: '#374151',
-  },
-  langTextSelected: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  startButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  startButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const createStyles = makeStyles((colors: Colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 40,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 16,
+    },
+    formGroup: {
+      marginBottom: 18,
+    },
+    label: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.text,
+    },
+    chipsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    platformHint: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 8,
+      lineHeight: 17,
+    },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipSelected: {
+      backgroundColor: colors.primarySoft,
+      borderColor: colors.primary,
+    },
+    chipText: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    chipTextSelected: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    languagesContainer: {
+      gap: 8,
+    },
+    langChip: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 8,
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    langChipSelected: {
+      backgroundColor: colors.primarySoft,
+      borderColor: colors.primary,
+    },
+    langText: {
+      fontSize: 14,
+      color: colors.text,
+    },
+    langTextSelected: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    startButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 16,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+    buttonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    startButtonText: {
+      color: colors.onPrimary,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  }),
+);

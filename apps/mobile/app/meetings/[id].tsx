@@ -21,6 +21,7 @@ import {
   type TranscriptSegment,
   type MeetingSummary,
 } from '../../lib/api';
+import { useTheme, makeStyles, type Colors } from '../../theme';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -37,6 +38,8 @@ type TabType = 'summary' | 'actionItems' | 'transcript';
 export default function MeetingDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const meetingId = params.id as string;
 
   const [activeTab, setActiveTab] = useState<TabType>('summary');
@@ -182,20 +185,20 @@ export default function MeetingDetailScreen() {
   const getStatusBadge = (status?: Meeting['status']) => {
     switch (status) {
       case 'completed':
-        return { bg: '#dcfce7', text: '#166534', label: 'Completed' };
+        return { bg: colors.successSoft, text: colors.success, label: 'Completed' };
       case 'processing':
-        return { bg: '#fef3c7', text: '#92400e', label: 'Processing' };
+        return { bg: colors.warningSoft, text: colors.warning, label: 'Processing' };
       case 'recording':
-        return { bg: '#fee2e2', text: '#991b1b', label: 'Recording' };
+        return { bg: colors.dangerSoft, text: colors.danger, label: 'Recording' };
       default:
-        return { bg: '#f3f4f6', text: '#374151', label: 'Draft' };
+        return { bg: colors.neutralSoft, text: colors.textMuted, label: 'Draft' };
     }
   };
 
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -224,24 +227,24 @@ export default function MeetingDetailScreen() {
 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={14} color="#6b7280" />
+            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
             <Text style={styles.metaText}>{formatDuration(meeting.duration_seconds)}</Text>
           </View>
           {meeting.meeting_type && (
             <View style={styles.metaItem}>
-              <Ionicons name="pricetag-outline" size={14} color="#6b7280" />
+              <Ionicons name="pricetag-outline" size={14} color={colors.textMuted} />
               <Text style={styles.metaText}>{meeting.meeting_type}</Text>
             </View>
           )}
           {meeting.detected_languages && meeting.detected_languages.length > 0 && (
             <View style={styles.metaItem}>
-              <Ionicons name="language-outline" size={14} color="#6b7280" />
+              <Ionicons name="language-outline" size={14} color={colors.textMuted} />
               <Text style={styles.metaText}>{meeting.detected_languages.map((l: string) => l.toUpperCase()).join(', ')}</Text>
             </View>
           )}
           {meeting.output_language && meeting.output_language !== 'en' && (
             <View style={styles.metaItem}>
-              <Ionicons name="globe-outline" size={14} color="#2563eb" />
+              <Ionicons name="globe-outline" size={14} color={colors.primary} />
               <Text style={[styles.metaText, styles.metaTextAccent]}>{meeting.output_language.toUpperCase()}</Text>
             </View>
           )}
@@ -252,7 +255,7 @@ export default function MeetingDetailScreen() {
             style={styles.recordButton}
             onPress={() => router.push(`/record/${meeting.id}`)}
           >
-            <Ionicons name="mic" size={16} color="#ffffff" />
+            <Ionicons name="mic" size={16} color={colors.onPrimary} />
             <Text style={styles.recordButtonText}>Start Recording</Text>
           </TouchableOpacity>
         )}
@@ -263,21 +266,21 @@ export default function MeetingDetailScreen() {
               style={styles.exportButton}
               onPress={() => handleExport('pdf')}
             >
-              <Ionicons name="document-text" size={16} color="#ffffff" />
+              <Ionicons name="document-text" size={16} color={colors.onPrimary} />
               <Text style={styles.exportButtonText}>PDF</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.exportButton, styles.exportButtonSecondary]}
               onPress={() => handleExport('docx')}
             >
-              <Ionicons name="document" size={16} color="#ffffff" />
+              <Ionicons name="document" size={16} color={colors.onPrimary} />
               <Text style={styles.exportButtonText}>DOCX</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.exportButton, styles.exportButtonTertiary]}
               onPress={() => setShowTranslationModal(true)}
             >
-              <Ionicons name="language" size={16} color="#ffffff" />
+              <Ionicons name="language" size={16} color={colors.onPrimary} />
               <Text style={styles.exportButtonText}>Translate</Text>
             </TouchableOpacity>
           </View>
@@ -361,7 +364,7 @@ export default function MeetingDetailScreen() {
                     <Text style={styles.cardTitle}>Decisions Made</Text>
                     {summary.decisions.map((decision, index) => (
                       <View key={index} style={styles.bulletRow}>
-                        <Ionicons name="checkmark-circle-outline" size={16} color="#16a34a" />
+                        <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
                         <Text style={styles.bulletText}>{decision}</Text>
                       </View>
                     ))}
@@ -370,7 +373,7 @@ export default function MeetingDetailScreen() {
               </>
             ) : (
               <View style={styles.emptyTabBox}>
-                <Ionicons name="document-text-outline" size={40} color="#9ca3af" />
+                <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
                 <Text style={styles.emptyTabText}>No summary generated yet.</Text>
                 <Text style={styles.emptyTabSubtext}>
                   Record audio or upload a recording to generate notes.
@@ -387,7 +390,7 @@ export default function MeetingDetailScreen() {
               <TextInput
                 style={styles.taskInput}
                 placeholder="Add new action item..."
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textMuted}
                 value={newTaskText}
                 onChangeText={setNewTaskText}
               />
@@ -397,7 +400,7 @@ export default function MeetingDetailScreen() {
                 disabled={addingTask}
               >
                 {addingTask ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator size="small" color={colors.onPrimary} />
                 ) : (
                   <Text style={styles.addTaskButtonText}>Add</Text>
                 )}
@@ -406,7 +409,7 @@ export default function MeetingDetailScreen() {
 
             {actionItems.length === 0 ? (
               <View style={styles.emptyTabBox}>
-                <Ionicons name="checkbox-outline" size={40} color="#9ca3af" />
+                <Ionicons name="checkbox-outline" size={40} color={colors.textMuted} />
                 <Text style={styles.emptyTabText}>No action items yet.</Text>
                 <Text style={styles.emptyTabSubtext}>
                   Type above to add tasks or record audio to auto-extract items.
@@ -425,7 +428,7 @@ export default function MeetingDetailScreen() {
                     <Ionicons
                       name={isCompleted ? 'checkbox' : 'square-outline'}
                       size={22}
-                      color={isCompleted ? '#16a34a' : '#6b7280'}
+                      color={isCompleted ? colors.success : colors.textMuted}
                       style={styles.taskCheckbox}
                     />
                     <View style={styles.taskTextContent}>
@@ -467,7 +470,7 @@ export default function MeetingDetailScreen() {
           <View style={styles.transcriptContainer}>
             {transcript.length === 0 ? (
               <View style={styles.emptyTabBox}>
-                <Ionicons name="chatbubbles-outline" size={40} color="#9ca3af" />
+                <Ionicons name="chatbubbles-outline" size={40} color={colors.textMuted} />
                 <Text style={styles.emptyTabText}>No transcript available.</Text>
               </View>
             ) : (
@@ -487,7 +490,7 @@ export default function MeetingDetailScreen() {
         )}
 
         <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteMeeting}>
-          <Ionicons name="trash-outline" size={16} color="#dc2626" />
+          <Ionicons name="trash-outline" size={16} color={colors.danger} />
           <Text style={styles.deleteButtonText}>Delete Meeting</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -499,7 +502,7 @@ export default function MeetingDetailScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Translate Meeting</Text>
               <TouchableOpacity onPress={() => setShowTranslationModal(false)}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
             <View style={styles.languageList}>
@@ -513,7 +516,7 @@ export default function MeetingDetailScreen() {
                     {lang.label}
                   </Text>
                   {selectedLanguage === lang.code && (
-                    <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
+                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -524,7 +527,7 @@ export default function MeetingDetailScreen() {
               disabled={translating}
             >
               {translating ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <Text style={styles.translateButtonText}>Translate</Text>
               )}
@@ -536,26 +539,27 @@ export default function MeetingDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = makeStyles((colors: Colors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
+    color: colors.danger,
   },
   headerCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   headerTop: {
     flexDirection: 'row',
@@ -566,7 +570,7 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     flex: 1,
     marginRight: 10,
   },
@@ -591,24 +595,24 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   metaTextAccent: {
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '600',
   },
   recordButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#dc2626',
+    backgroundColor: colors.danger,
     paddingVertical: 10,
     borderRadius: 8,
     marginTop: 12,
     gap: 6,
   },
   recordButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -622,27 +626,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     paddingVertical: 10,
     borderRadius: 8,
     gap: 6,
   },
   exportButtonSecondary: {
-    backgroundColor: '#059669',
+    backgroundColor: colors.success,
   },
   exportButtonTertiary: {
     backgroundColor: '#7c3aed',
   },
   exportButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   tabItem: {
     flex: 1,
@@ -652,15 +656,15 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabItemActive: {
-    borderBottomColor: '#2563eb',
+    borderBottomColor: colors.primary,
   },
   tabItemText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   tabItemTextActive: {
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '600',
   },
   tabContent: {
@@ -674,22 +678,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     marginBottom: 10,
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 8,
   },
   bodyText: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.text,
     lineHeight: 20,
   },
   bulletRow: {
@@ -702,12 +706,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     marginTop: 7,
   },
   bulletText: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.text,
     flex: 1,
     lineHeight: 20,
   },
@@ -716,10 +720,10 @@ const styles = StyleSheet.create({
   },
   addTaskCard: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignItems: 'center',
@@ -728,31 +732,31 @@ const styles = StyleSheet.create({
   taskInput: {
     flex: 1,
     fontSize: 14,
-    color: '#111827',
+    color: colors.text,
     paddingVertical: 6,
   },
   addTaskButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 6,
   },
   addTaskButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   taskItemCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   taskItemCardDone: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.neutralSoft,
     opacity: 0.75,
   },
   taskCheckbox: {
@@ -765,11 +769,11 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#111827',
+    color: colors.text,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   taskMetaRow: {
     flexDirection: 'row',
@@ -779,7 +783,7 @@ const styles = StyleSheet.create({
   },
   taskMetaText: {
     fontSize: 11,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   priorityTag: {
     fontSize: 10,
@@ -787,26 +791,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
+    backgroundColor: colors.warningSoft,
+    color: colors.warning,
   },
   priorityHigh: {
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
+    backgroundColor: colors.dangerSoft,
+    color: colors.danger,
   },
   priorityLow: {
-    backgroundColor: '#f3f4f6',
-    color: '#4b5563',
+    backgroundColor: colors.neutralSoft,
+    color: colors.textMuted,
   },
   transcriptContainer: {
     gap: 8,
   },
   segmentCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     marginBottom: 8,
   },
   segmentHeader: {
@@ -817,34 +821,34 @@ const styles = StyleSheet.create({
   speakerText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563eb',
+    color: colors.primary,
   },
   timeText: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   segmentBody: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.text,
     lineHeight: 20,
   },
   emptyTabBox: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   emptyTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
     marginTop: 8,
   },
   emptyTabSubtext: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
     textAlign: 'center',
     paddingHorizontal: 20,
@@ -859,7 +863,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: 13,
-    color: '#dc2626',
+    color: colors.danger,
     fontWeight: '600',
   },
   modalOverlay: {
@@ -874,7 +878,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 20,
     width: '100%',
@@ -889,7 +893,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
   },
   languageList: {
     gap: 8,
@@ -902,31 +906,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   languageItemSelected: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#2563eb',
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
   },
   languageText: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.text,
   },
   languageTextSelected: {
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '600',
   },
   translateButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   translateButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
-});
+  }),
+);

@@ -13,9 +13,12 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi, getActiveApiUrl, setCustomApiUrl, DEFAULT_API_URL } from '../lib/api';
+import { useTheme, makeStyles, type Colors } from '../theme';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,6 +73,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder="Full Name (optional)"
+          placeholderTextColor={colors.textMuted}
           value={fullName}
           onChangeText={setFullName}
         />
@@ -77,6 +81,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email *"
+          placeholderTextColor={colors.textMuted}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -86,6 +91,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password (min 8 characters) *"
+          placeholderTextColor={colors.textMuted}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -125,6 +131,7 @@ export default function RegisterScreen() {
               value={serverUrl}
               onChangeText={setServerUrl}
               placeholder="http://192.168.x.x:3000"
+              placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -141,99 +148,102 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  content: {
-    flexGrow: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 32,
-  },
-  input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#2563eb',
-    fontSize: 14,
-  },
-  serverToggleButton: {
-    marginTop: 20,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  serverToggleText: {
-    color: '#6b7280',
-    fontSize: 13,
-    textDecorationLine: 'underline',
-  },
-  serverConfigBox: {
-    marginTop: 12,
-    padding: 14,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  serverLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#4b5563',
-    marginBottom: 6,
-  },
-  serverInput: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#111827',
-  },
-  resetButton: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  resetText: {
-    fontSize: 11,
-    color: '#2563eb',
-  },
-});
+const createStyles = makeStyles((colors: Colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flexGrow: 1,
+      padding: 24,
+      justifyContent: 'center',
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textMuted,
+      marginBottom: 32,
+    },
+    input: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      padding: 16,
+      fontSize: 16,
+      marginBottom: 16,
+      color: colors.text,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonText: {
+      color: colors.onPrimary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    linkButton: {
+      marginTop: 16,
+      alignItems: 'center',
+    },
+    linkText: {
+      color: colors.primary,
+      fontSize: 14,
+    },
+    serverToggleButton: {
+      marginTop: 20,
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    serverToggleText: {
+      color: colors.textMuted,
+      fontSize: 13,
+      textDecorationLine: 'underline',
+    },
+    serverConfigBox: {
+      marginTop: 12,
+      padding: 14,
+      backgroundColor: colors.card,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    serverLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textMuted,
+      marginBottom: 6,
+    },
+    serverInput: {
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      fontSize: 13,
+      color: colors.text,
+    },
+    resetButton: {
+      marginTop: 8,
+      alignSelf: 'flex-start',
+    },
+    resetText: {
+      fontSize: 11,
+      color: colors.primary,
+    },
+  }),
+);
