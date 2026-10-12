@@ -39,7 +39,7 @@ export default function Home() {
             <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
               AI meeting notes · Built for East Africa
             </span>
-            <h1 className="mt-6 text-5xl font-bold tracking-tight md:text-6xl">
+            <h1 className="mt-6 text-3xl font-bold tracking-tight md:text-4xl">
               Turn every meeting into
               <br />
               <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">clear, actionable notes</span>
