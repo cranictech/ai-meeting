@@ -1,10 +1,18 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Pricing',
+  description: 'Meeti plans and pricing. Free plan available now; paid plans coming soon.',
+  alternates: { canonical: '/pricing' },
+  openGraph: { title: 'Meeti - Pricing', description: 'Meeti plans and pricing.', url: '/pricing' },
+};
 
 const plans = [
   {
     name: 'Free',
     price: '$0',
-    note: 'for getting started',
+    note: 'available now',
     features: [
       '60 transcription minutes / month',
       '1 GB storage',
@@ -17,7 +25,7 @@ const plans = [
   {
     name: 'Pro',
     price: '$9.99',
-    note: 'per month, or $99.99/year',
+    note: 'planned · not yet available',
     features: [
       '500 transcription minutes / month',
       '10 GB storage',
@@ -31,7 +39,7 @@ const plans = [
   {
     name: 'Business',
     price: '$29.99',
-    note: 'per month, or $299.99/year',
+    note: 'planned · not yet available',
     features: [
       '2000 transcription minutes / month',
       '100 GB storage',
@@ -55,7 +63,12 @@ export default function Pricing() {
       </header>
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
         <h1 className="text-3xl font-bold mb-2 text-center">Pricing</h1>
-        <p className="text-gray-600 text-center mb-10">Simple plans that scale with your meetings.</p>
+        <p className="text-gray-600 text-center mb-6">Simple plans that scale with your meetings.</p>
+        <div className="max-w-2xl mx-auto mb-10 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 text-center">
+          Paid plans are <strong>not yet available</strong>. Checkout is not active and we
+          do not currently process any payment &mdash; only the Free plan can be used today.
+          Pro and Business pricing below is indicative and subject to change.
+        </div>
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((p) => (
             <div key={p.name} className="border rounded-2xl p-6">
@@ -71,7 +84,7 @@ export default function Pricing() {
           ))}
         </div>
         <p className="text-xs text-gray-400 text-center mt-8">
-          Prices in USD. Availability of paid billing may vary &mdash; see our{' '}
+          Prices in USD. Paid billing is not currently offered &mdash; see our{' '}
           <Link href="/terms" className="underline">Terms of Service</Link>.
         </p>
       </main>

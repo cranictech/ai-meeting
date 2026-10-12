@@ -41,6 +41,11 @@ export const config = {
     sttProvider: process.env.STT_PROVIDER || 'openai',
     llmProvider: process.env.LLM_PROVIDER || 'openai',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
+    // Model names are env-configurable so a retired/preview alias can be
+    // swapped without a code change. Defaults avoid preview aliases.
+    transcriptionModel: process.env.OPENAI_TRANSCRIPTION_MODEL || 'whisper-1',
+    analysisModel: process.env.OPENAI_ANALYSIS_MODEL || 'gpt-4o',
+    analysisFallbackModel: process.env.OPENAI_ANALYSIS_FALLBACK_MODEL || 'gpt-4o-mini',
   },
 
   mail: {

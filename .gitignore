@@ -19,3 +19,6 @@ apps/api/uploads/
 *.tsbuildinfo
 *.rdb
 dump.rdb
+
+# Private cost/purchase notes — never push to GitHub
+COSTS-TO-PAY.md

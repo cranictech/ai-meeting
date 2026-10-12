@@ -137,6 +137,13 @@ async function handleDirectUpload(req: AuthRequest, res: any, next: any) {
 
     await meetingStore.createAudioChunk(recording.id, parseInt(chunkIndex), key);
 
+    // Persist the user's chosen spoken language so the worker can transcribe
+    // with it instead of relying on automatic detection.
+    const language = (req.body.language || '').trim();
+    if (language && language !== 'auto') {
+      await db.query('UPDATE meetings SET source_language = $1 WHERE id = $2', [language, meetingId]);
+    }
+
     res.json({ success: true, storageKey: key });
   } catch (error) {
     next(error);
@@ -187,6 +194,13 @@ async function handleFullUpload(req: AuthRequest, res: any, next: any) {
     }
 
     await meetingStore.createAudioChunk(recording.id, 0, key);
+
+    // Persist the user's chosen spoken language before queueing so the worker
+    // transcribes with it instead of relying on automatic detection.
+    const language = (req.body.language || '').trim();
+    if (language && language !== 'auto') {
+      await db.query('UPDATE meetings SET source_language = $1 WHERE id = $2', [language, meetingId]);
+    }
 
     // Queue for processing
     await queueMeeting(meetingId);

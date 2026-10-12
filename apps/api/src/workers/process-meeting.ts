@@ -87,6 +87,13 @@ export async function processMeeting(meetingId: string): Promise<void> {
 
     await meetingRepo.updateStatus(meetingId, 'processing');
 
+    // Clear any previous failure reason before (re)processing.
+    try {
+      await db.query(`UPDATE meetings SET metadata = metadata - 'failureReason' WHERE id = $1`, [meetingId]);
+    } catch (_) {
+      // non-critical
+    }
+
     // 2. Locate audio file
     const recording = await meetingRepo.getRecordingByMeetingId(meetingId);
     let audioFilePath = '';
@@ -113,7 +120,10 @@ export async function processMeeting(meetingId: string): Promise<void> {
     }
     await transcriptRepo.updateStatus(transcript.id, 'processing');
 
-    const transcriptionResult = await transcriptionService.transcribe(audioFilePath, meeting.title);
+    const transcriptionResult = await transcriptionService.transcribe(
+      audioFilePath,
+      meeting.source_language || undefined,
+    );
 
     // 4. Create speakers if needed
     const existingSpeakers = await transcriptRepo.getSpeakers(meetingId);
@@ -299,6 +309,20 @@ export async function processMeeting(meetingId: string): Promise<void> {
   } catch (error) {
     console.error(`Failed to process meeting ${meetingId}:`, error);
     await meetingRepo.updateStatus(meetingId, 'failed');
+
+    // Store the real reason on the meeting so the UI can show something honest
+    // and actionable instead of a generic "processing failed".
+    const reason = error instanceof Error ? error.message : String(error);
+    try {
+      await db.query(
+        `UPDATE meetings
+         SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{failureReason}', to_jsonb($2::text))
+         WHERE id = $1`,
+        [meetingId, reason.slice(0, 500)]
+      );
+    } catch (_) {
+      // non-critical
+    }
 
     const meeting = await meetingRepo.findById(meetingId);
     if (meeting) {

@@ -167,8 +167,12 @@ export default function MeetingDetailPage({ params }: { params: { id: string } }
         translateActionItems: true,
       });
       setTranslatedData(res.data as any);
-    } catch (err) {
-      alert('Translation failed. Please verify translation service configuration.');
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+      alert(
+        serverMsg ||
+          'Translation failed. The AI service is unavailable right now \u2014 it may be out of credit or misconfigured.'
+      );
     } finally {
       setTranslating(false);
     }

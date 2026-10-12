@@ -1,4 +1,12 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About',
+  description: 'About Meeti and Cranictech, the company behind it.',
+  alternates: { canonical: '/about' },
+  openGraph: { title: 'About Meeti', description: 'About Meeti and Cranictech.', url: '/about' },
+};
 
 export default function About() {
   return (
@@ -14,6 +22,9 @@ export default function About() {
       </header>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <h1 className="text-3xl font-bold mb-6">About Meeti</h1>
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          DRAFT — Items marked [SET] still need to be confirmed before publishing.
+        </div>
         <div className="space-y-5 leading-relaxed text-gray-800">
           <p>
             Meeti turns meetings into clear, actionable notes. Record a meeting, and
@@ -21,15 +32,16 @@ export default function About() {
             so nothing said in the room gets lost.
           </p>
           <p>
-            Meeti runs on iPhone, Android and the web, and works with multiple
-            languages. It is built for teams and individuals who want reliable meeting
-            records without spending time writing them up.
+            Meeti runs on iPhone, Android and the web, and works in several languages. It
+            is built for teams and individuals who want reliable meeting records without
+            spending time writing them up.
           </p>
           <p>
-            Meeti is operated by{' '}
-            <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">[SET: legal entity name]</mark>.
+            Meeti is operated by <strong>Cranictech</strong>, of Nasser Road, Printer&apos;s
+            Miracle Centre, Uganda (company registration number:{' '}
+            <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">[SET: company registration number]</mark>).
             For questions, contact{' '}
-            <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">[SET: support email]</mark>.
+            <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">[SET: support email (not yet created/verified)]</mark>.
           </p>
           <p className="text-sm text-gray-500">
             See our <Link href="/privacy" className="underline">Privacy Policy</Link>,{' '}

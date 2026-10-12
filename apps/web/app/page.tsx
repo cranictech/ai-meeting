@@ -1,107 +1,111 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+import { ThemeToggle } from '@/components/theme';
+
+export const metadata: Metadata = {
+  title: 'Meeti - Turn meetings into actionable notes',
+  description: 'Record or upload a meeting and get a transcript, summary, decisions and action items automatically.',
+  alternates: { canonical: '/' },
+  openGraph: { title: 'Meeti - Turn meetings into actionable notes', description: 'Record or upload a meeting and get a transcript, summary, decisions and action items automatically.', url: '/' },
+};
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center">
-              <span className="text-2xl font-bold text-gray-900">Meeti</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/login" className="text-gray-700 hover:text-gray-900">
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                Get Started
-              </Link>
-            </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <nav className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <img src="/apple-touch-icon.png" alt="Meeti" className="h-8 w-8 rounded-lg object-cover" />
+            <span className="text-2xl font-bold tracking-tight">Meeti</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link href="/login" className="hidden text-sm font-medium text-muted-foreground transition hover:text-foreground sm:block">
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            >
+              Get Started
+            </Link>
           </div>
         </div>
       </nav>
 
       <main>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+            <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+              AI meeting notes · Built for East Africa
+            </span>
+            <h1 className="mt-6 text-5xl font-bold tracking-tight md:text-6xl">
               Turn every meeting into
               <br />
-              <span className="text-blue-600">clear, actionable notes</span>
+              <span className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">clear, actionable notes</span>
             </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="mx-auto mt-6 max-w-2xl text-xl text-muted-foreground">
               Record meetings in multiple languages, get AI-powered transcripts,
               summaries, and action items. Works on iPhone, Android, and Web.
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Link
                 href="/register"
-                className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition"
+                className="rounded-xl bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground shadow-glow transition hover:opacity-90"
               >
                 Start Free
               </Link>
               <Link
                 href="#features"
-                className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold hover:border-gray-400 transition"
+                className="rounded-xl border border-border bg-card px-8 py-4 text-lg font-semibold text-foreground transition hover:border-primary/40"
               >
                 Learn More
               </Link>
             </div>
           </div>
 
-          <div id="features" className="mt-32 grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-xl shadow-sm border">
-              <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
+          <div id="features" className="mt-32 grid gap-6 md:grid-cols-3">
+            <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Record and Listen</h3>
-              <p className="text-gray-600">
-                Capture meetings in English, Luganda, Swahili, and 15 more languages.
-                Automatic language detection included.
+              <h3 className="mb-2 text-xl font-semibold">Record and Listen</h3>
+              <p className="text-muted-foreground">
+                Capture meetings in English, Swahili and other major languages, with
+                automatic language detection.
               </p>
             </div>
-            <div className="bg-white p-8 rounded-xl shadow-sm border">
-              <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+            <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-success/10 text-success">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Understand</h3>
-              <p className="text-gray-600">
+              <h3 className="mb-2 text-xl font-semibold">Understand</h3>
+              <p className="text-muted-foreground">
                 AI extracts summaries, decisions, action items, and deadlines
                 from your meetings automatically.
               </p>
             </div>
-            <div className="bg-white p-8 rounded-xl shadow-sm border">
-              <div className="w-16 h-16 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
+            <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Act</h3>
-              <p className="text-gray-600">
-                Track tasks, set reminders, export to Google Docs, Gmail, and
-                Apple Notes. Never miss a follow-up.
+              <h3 className="mb-2 text-xl font-semibold">Act</h3>
+              <p className="text-muted-foreground">
+                Track tasks, set reminders, and export to PDF, Google Drive, Gmail and
+                Slack. Never miss a follow-up.
               </p>
             </div>
           </div>
 
-          <div className="mt-32 bg-blue-600 text-white rounded-2xl p-12 text-center">
-            <h2 className="text-3xl font-bold mb-4">
-              Built for Uganda and East Africa
-            </h2>
-            <p className="text-xl mb-8 opacity-90">
-              Support for Luganda, Runyankole, Rukiga, Ateso, Luo, Acholi, and
-              more local languages.
+          <div className="mt-32 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-12 text-center text-white shadow-glow">
+            <h2 className="mb-4 text-3xl font-bold">Built for Uganda and East Africa</h2>
+            <p className="mx-auto mb-8 max-w-2xl text-xl opacity-90">
+              Designed for the way people meet in Uganda and across East Africa, with
+              more languages added over time.
             </p>
             <Link
               href="/register"
-              className="inline-block bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition"
+              className="inline-block rounded-xl bg-white px-8 py-4 text-lg font-semibold text-blue-700 transition hover:bg-gray-100"
             >
               Try It Now
             </Link>
@@ -109,42 +113,42 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t mt-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid md:grid-cols-4 gap-8">
+      <footer className="mt-24 border-t border-border">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-8 md:grid-cols-4">
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li><Link href="#features">Features</Link></li>
-                <li><Link href="/pricing">Pricing</Link></li>
-                <li><Link href="/security">Security</Link></li>
+              <h4 className="mb-4 font-semibold">Product</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="#features" className="hover:text-foreground">Features</Link></li>
+                <li><Link href="/pricing" className="hover:text-foreground">Pricing</Link></li>
+                <li><Link href="/security" className="hover:text-foreground">Security</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li><Link href="/about">About</Link></li>
-                <li><Link href="mailto:support@meeti.org.uk">Contact</Link></li>
+              <h4 className="mb-4 font-semibold">Company</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/about" className="hover:text-foreground">About</Link></li>
+                <li><Link href="/about" className="hover:text-foreground">Contact</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li><Link href="/privacy">Privacy Policy</Link></li>
-                <li><Link href="/terms">Terms of Service</Link></li>
-                <li><Link href="/ai-policy">AI Policy</Link></li>
+              <h4 className="mb-4 font-semibold">Legal</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/privacy" className="hover:text-foreground">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-foreground">Terms of Service</Link></li>
+                <li><Link href="/ai-policy" className="hover:text-foreground">AI Policy</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li><Link href="mailto:support@meeti.org.uk">Help Center</Link></li>
-                <li><Link href="mailto:support@meeti.org.uk">Contact Support</Link></li>
+              <h4 className="mb-4 font-semibold">Support</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/about" className="hover:text-foreground">Help Center</Link></li>
+                <li><Link href="/about" className="hover:text-foreground">Contact Support</Link></li>
               </ul>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t text-center text-gray-600">
-            (c) 2026 Meeti. All rights reserved.
+          <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
+            © 2026 Meeti. All rights reserved.
           </div>
         </div>
       </footer>

@@ -34,7 +34,8 @@ router.get('/status', async (req: AuthRequest, res, next) => {
 router.get('/auth-url', (req: AuthRequest, res) => {
   const redirectUri = (req.query.redirectUri as string) || 'http://localhost:3001/dashboard/integrations';
   const url = zoomService.getAuthUrl(redirectUri);
-  res.json({ url });
+  // url is empty when ZOOM_CLIENT_ID is not configured server-side.
+  res.json({ url, configured: Boolean(url) });
 });
 
 // Connect Zoom via OAuth code

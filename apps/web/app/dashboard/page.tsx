@@ -11,6 +11,21 @@ import {
   type ActionItem,
   type UserProfileResponse,
 } from '@/lib/api';
+import { AppShell } from '@/components/AppShell';
+import { Card, StatCard, QuickAction, Badge } from '@/components/ui';
+
+function statusTone(status: Meeting['status']): 'success' | 'warning' | 'danger' | 'muted' {
+  switch (status) {
+    case 'completed':
+      return 'success';
+    case 'processing':
+      return 'warning';
+    case 'recording':
+      return 'danger';
+    default:
+      return 'muted';
+  }
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -23,12 +38,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-
     if (!token) {
       router.push('/login');
       return;
     }
-
     loadData();
   }, []);
 
@@ -59,11 +72,11 @@ export default function DashboardPage() {
       loadData();
       return;
     }
-
     try {
       setIsSearching(true);
       const res = await meetingsApi.search(searchQuery.trim());
       setMeetings(res.data);
+      router.push('/dashboard/search?q=' + encodeURIComponent(searchQuery.trim()));
     } catch (err) {
       console.error('Search error:', err);
     } finally {
@@ -80,207 +93,175 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await authApi.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('auth_token');
-      router.push('/');
-    }
-  };
-
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '';
     const mins = Math.floor(seconds / 60);
     return `${mins}m`;
   };
 
+  const totalMinutes = Math.round(
+    meetings.reduce((acc, m) => acc + (m.duration_seconds || 0), 0) / 60
+  );
+
+  const searchSlot = (
+    <form onSubmit={handleSearch} className="relative w-64 lg:w-80">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+      </span>
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search meetings…"
+        className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+    </form>
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600 font-medium">Loading dashboard...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-sm font-medium text-muted-foreground">Loading dashboard…</div>
       </div>
     );
   }
 
+  const userName = userProfile?.profile?.full_name || 'there';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Meeti</h1>
-            <div className="flex items-center gap-6">
-              <Link href="/dashboard/meetings" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Meetings
-              </Link>
-              <Link href="/dashboard/tasks" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Tasks
-              </Link>
-              <Link href="/dashboard/integrations" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Integrations
-              </Link>
-              <Link href="/dashboard/developer" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Developer & API
-              </Link>
-              <Link href="/dashboard/organizations" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Teams
-              </Link>
-              <Link href="/dashboard/billing" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Billing
-              </Link>
-              <Link href="/dashboard/search" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Search
-              </Link>
-              <Link href="/dashboard/settings" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
-                Settings
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-sm font-medium text-gray-500 hover:text-red-600 transition"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Welcome Banner */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <AppShell userName={userProfile?.profile?.full_name} userEmail={userProfile?.user?.email} search={searchSlot}>
+      <div className="space-y-8">
+        {/* Greeting */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {userProfile?.profile?.full_name || 'there'}
-            </h2>
-            <p className="text-gray-600 text-sm mt-1">Ready to record and analyze your next meeting?</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {userName}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">Ready to record and analyze your next meeting?</p>
           </div>
-
           <Link
             href="/dashboard/meetings/new"
-            className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition font-semibold text-sm shadow-sm"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-card transition hover:opacity-90"
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Start New Meeting
           </Link>
         </div>
 
-        {/* Global Search Bar */}
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search meetings, transcript text, decisions, or action items..."
-            className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-          />
-          <button
-            type="submit"
-            disabled={isSearching}
-            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium text-sm hover:bg-black transition disabled:opacity-50"
-          >
-            {isSearching ? 'Searching...' : 'Search'}
-          </button>
-        </form>
+        {/* Quick actions */}
+        <Card className="p-6">
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            <QuickAction
+              href="/dashboard/meetings/new"
+              label="New Meeting"
+              tone="primary"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>}
+            />
+            <QuickAction
+              href="/dashboard/meetings"
+              label="My Meetings"
+              tone="green"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h11l5 5v11a0 0 0 0 1 0 0H4z"/><path d="M14 4v6h6"/></svg>}
+            />
+            <QuickAction
+              href="/dashboard/tasks"
+              label="Tasks"
+              tone="orange"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
+            />
+            <QuickAction
+              href="/dashboard/search"
+              label="Search"
+              tone="purple"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>}
+            />
+          </div>
+        </Card>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Recent Meetings */}
+        {/* Stats */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Total Meetings" value={meetings.length} tone="primary" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>} />
+          <StatCard label="Open Tasks" value={actionItems.length} tone="warning" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>} />
+          <StatCard label="Minutes Recorded" value={totalMinutes} tone="success" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>} />
+        </div>
+
+        {/* Recent meetings + tasks */}
+        <div className="grid gap-8 lg:grid-cols-2">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Recent Meetings</h3>
-              <Link href="/dashboard/meetings" className="text-xs font-semibold text-blue-600 hover:underline">
+              <h2 className="text-lg font-bold text-foreground">Recent Meetings</h2>
+              <Link href="/dashboard/meetings" className="text-xs font-semibold text-primary hover:underline">
                 View all ({meetings.length})
               </Link>
             </div>
-
             {meetings.length === 0 ? (
-              <div className="bg-white border rounded-xl p-8 text-center text-gray-500 text-sm shadow-sm">
-                No meetings found. Start a new meeting to generate notes.
-              </div>
+              <Card className="p-8 text-center text-sm text-muted-foreground">
+                No meetings yet. Start a new meeting to generate notes.
+              </Card>
             ) : (
               <div className="space-y-3">
                 {meetings.slice(0, 5).map((meeting) => (
-                  <Link
-                    key={meeting.id}
-                    href={`/dashboard/meetings/${meeting.id}`}
-                    className="block bg-white border rounded-xl p-4 hover:border-blue-400 hover:shadow-sm transition"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0 pr-3">
-                        <h4 className="font-semibold text-gray-900 truncate">{meeting.title}</h4>
-                        <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
-                          <span>{new Date(meeting.created_at).toLocaleDateString()}</span>
-                          {meeting.duration_seconds && <span>{formatDuration(meeting.duration_seconds)}</span>}
-                          <span className="capitalize">{meeting.meeting_type || 'General'}</span>
+                  <Link key={meeting.id} href={`/dashboard/meetings/${meeting.id}`} className="block">
+                    <Card hover className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate font-semibold text-foreground">{meeting.title}</h3>
+                          <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>{new Date(meeting.created_at).toLocaleDateString()}</span>
+                            {meeting.duration_seconds && <span>{formatDuration(meeting.duration_seconds)}</span>}
+                            <span className="capitalize">{meeting.meeting_type || 'General'}</span>
+                          </div>
                         </div>
+                        <Badge tone={statusTone(meeting.status)}>{meeting.status}</Badge>
                       </div>
-                      <span className={`px-2 py-0.5 text-xs font-semibold rounded-full uppercase tracking-wider ${
-                        meeting.status === 'completed'
-                          ? 'bg-green-100 text-green-700'
-                          : meeting.status === 'processing'
-                          ? 'bg-amber-100 text-amber-700'
-                          : meeting.status === 'recording'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {meeting.status}
-                      </span>
-                    </div>
+                    </Card>
                   </Link>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Pending Action Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Pending Action Items</h3>
-              <Link href="/dashboard/tasks" className="text-xs font-semibold text-blue-600 hover:underline">
+              <h2 className="text-lg font-bold text-foreground">Pending Action Items</h2>
+              <Link href="/dashboard/tasks" className="text-xs font-semibold text-primary hover:underline">
                 View tasks ({actionItems.length})
               </Link>
             </div>
-
             {actionItems.length === 0 ? (
-              <div className="bg-white border rounded-xl p-8 text-center text-gray-500 text-sm shadow-sm">
-                All tasks are up to date.
-              </div>
+              <Card className="p-8 text-center text-sm text-muted-foreground">All tasks are up to date.</Card>
             ) : (
               <div className="space-y-3">
                 {actionItems.slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white border rounded-xl p-4 flex items-start gap-3 shadow-sm hover:border-gray-300 transition"
-                  >
+                  <Card key={item.id} className="flex items-start gap-3 p-4">
                     <input
                       type="checkbox"
                       onChange={() => handleToggleTask(item)}
-                      className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-ring"
                       title="Mark as complete"
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{item.task}</p>
-                      <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
-                        {item.assignee && <span>Assignee: <strong className="text-gray-700">{item.assignee}</strong></span>}
-                        {item.due_date && <span>Due: <strong className="text-gray-700">{new Date(item.due_date).toLocaleDateString()}</strong></span>}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{item.task}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        {item.assignee && <span>Assignee: <strong className="text-foreground">{item.assignee}</strong></span>}
+                        {item.due_date && <span>Due: <strong className="text-foreground">{new Date(item.due_date).toLocaleDateString()}</strong></span>}
                       </div>
                     </div>
-                    <span className={`px-2 py-0.5 text-xs font-semibold rounded uppercase tracking-wider ${
-                      item.priority === 'high'
-                        ? 'bg-red-100 text-red-700'
-                        : item.priority === 'medium'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    <Badge tone={item.priority === 'high' ? 'danger' : item.priority === 'medium' ? 'warning' : 'muted'}>
                       {item.priority}
-                    </span>
-                  </div>
+                    </Badge>
+                  </Card>
                 ))}
               </div>
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

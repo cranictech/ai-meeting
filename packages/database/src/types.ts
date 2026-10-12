@@ -33,6 +33,7 @@ export interface Meeting {
   status: 'draft' | 'recording' | 'processing' | 'completed' | 'failed' | 'archived';
   recording_quality: string;
   detected_languages?: string[];
+  source_language?: string;
   output_language: string;
   duration_seconds?: number;
   started_at?: Date;

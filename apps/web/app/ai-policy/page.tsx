@@ -1,4 +1,12 @@
 import LegalLayout from '../../components/LegalLayout';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'AI Policy',
+  description: 'How Meeti uses artificial intelligence, its limits, and your responsibilities.',
+  alternates: { canonical: '/ai-policy' },
+  openGraph: { title: 'Meeti - AI Policy', description: 'How Meeti uses AI, its limits, and your responsibilities.', url: '/ai-policy' },
+};
 
 const Fill = ({ children }: { children: React.ReactNode }) => (
   <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">
@@ -8,7 +16,11 @@ const Fill = ({ children }: { children: React.ReactNode }) => (
 
 export default function AIPolicy() {
   return (
-    <LegalLayout title="AI Policy" updated="11 October 2026">
+    <LegalLayout
+      title="AI Policy"
+      updated="11 October 2026"
+      notice="DRAFT — This policy has not yet been reviewed by a qualified lawyer and items marked [SET] still need to be confirmed. Do not publish until reviewed."
+    >
       <p>
         This policy explains how Meeti uses artificial intelligence, what data it
         processes, its limits, and your responsibilities. It forms part of our{' '}
@@ -26,12 +38,17 @@ export default function AIPolicy() {
       <h2 className="text-xl font-semibold pt-4">2. AI providers and processing</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>
-          Transcription and language detection are performed by{' '}
-          <strong>OpenAI Whisper</strong> (model <code>whisper-1</code>).
+          Transcription and language detection are performed by a
+          <strong> speech-to-text model provided by OpenAI</strong>.
         </li>
         <li>
-          Summarisation, analysis and translation are performed by{' '}
-          <strong>OpenAI GPT&#8209;4</strong> (model <code>gpt-4-turbo-preview</code>).
+          Summarisation, analysis and translation are performed by a
+          <strong> large-language model provided by OpenAI</strong>.
+        </li>
+        <li>
+          We may change the specific underlying models over time as providers
+          retire or replace them; the provider and the processing described here
+          stay the same.
         </li>
         <li>
           Your audio and transcript text are sent to OpenAI only to produce these
@@ -62,8 +79,8 @@ export default function AIPolicy() {
         <li>Automatic language detection can misidentify the language.</li>
         <li>
           Some languages advertised in the app are low-resource and may be unsupported
-          or noticeably less accurate. Whisper reliably supports major world languages
-          (for example English and Swahili); accuracy and support for{' '}
+          or noticeably less accurate. Our speech-to-text provider reliably supports
+          major world languages (for example English and Swahili); accuracy and support for{' '}
           <strong>Luganda, Runyankole, Rukiga, Ateso, Luo and Acholi</strong> vary and
           may be limited. Do not rely on output for these languages without checking
           the recording.
@@ -105,7 +122,7 @@ export default function AIPolicy() {
       <h2 className="text-xl font-semibold pt-4">9. Reporting AI problems</h2>
       <p>
         Report errors, harmful output or privacy concerns to{' '}
-        <Fill>support email</Fill>. We aim to respond within{' '}
+        <Fill>support email (not yet created/verified)</Fill>. We aim to respond within{' '}
         <Fill>response timeframe, e.g. 5 business days</Fill>.
       </p>
     </LegalLayout>

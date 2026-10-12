@@ -14,6 +14,23 @@ export default function ProcessingPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const friendlyFailure = (raw: string): string => {
+    const t = (raw || '').toLowerCase();
+    if (t.includes('credit') || t.includes('429') || t.includes('insufficient')) {
+      return 'The AI service is out of credit, so notes can\u2019t be generated yet. Add credit to the provider account and retry.';
+    }
+    if (t.includes('not found') && t.includes('audio')) {
+      return 'No audio was found for this meeting. This can happen for meetings created from a link without a recording. Please record on this device and try again.';
+    }
+    if (t.includes('econnreset') || t.includes('connection error') || t.includes('network')) {
+      return 'Could not reach the AI service. Please check the connection and retry.';
+    }
+    if (raw) {
+      return `Processing failed: ${raw}`;
+    }
+    return 'Processing encountered an issue while generating notes.';
+  };
+
   useEffect(() => {
     startPolling();
     return () => {
@@ -38,7 +55,7 @@ export default function ProcessingPage() {
           }, 800);
         } else if (meeting.status === 'failed') {
           setStatus('failed');
-          setErrorMsg('Processing encountered an issue while generating notes.');
+          setErrorMsg(friendlyFailure((meeting.metadata as any)?.failureReason || ''));
           if (intervalRef.current) clearInterval(intervalRef.current);
         } else {
           setProgress((prev) => Math.min(prev + 10, 92));

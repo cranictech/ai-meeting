@@ -97,7 +97,11 @@ export default function IntegrationsPage() {
   };
 
   const handleConnectSlack = () => {
-    const slackClientId = process.env.NEXT_PUBLIC_SLACK_CLIENT_ID || 'mock_slack_client';
+    const slackClientId = process.env.NEXT_PUBLIC_SLACK_CLIENT_ID;
+    if (!slackClientId) {
+      setActionMessage({ type: 'error', text: 'Slack is not configured on this server yet, so it cannot be connected.' });
+      return;
+    }
     const redirectUri = `${window.location.origin}/dashboard/integrations`;
     const scopes = 'channels:read,chat:write,incoming-webhook';
     window.location.href = `https://slack.com/oauth/v2/authorize?client_id=${slackClientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
@@ -144,18 +148,13 @@ export default function IntegrationsPage() {
   const handleConnectZoom = async () => {
     try {
       const res = await zoomApi.getAuthUrl(window.location.href);
-      if (res.data?.url) {
-        // In local/demo mode or redirect to zoom oauth
-        if (res.data.url.includes('ZOOM_MOCK_CLIENT_ID')) {
-          await zoomApi.connect('mock_zoom_auth_code', window.location.href);
-          setActionMessage({ type: 'success', text: 'Zoom connected successfully!' });
-          loadAllIntegrations();
-        } else {
-          window.location.href = res.data.url;
-        }
+      if (!res.data?.url) {
+        setActionMessage({ type: 'error', text: 'Zoom is not configured on this server yet, so it cannot be connected.' });
+        return;
       }
+      window.location.href = res.data.url;
     } catch (err: any) {
-      setActionMessage({ type: 'error', text: 'Failed to connect Zoom' });
+      setActionMessage({ type: 'error', text: err?.response?.data?.error || 'Failed to start the Zoom connection.' });
     }
   };
 

@@ -1,4 +1,12 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Security',
+  description: 'How Meeti protects your meetings, recordings and account.',
+  alternates: { canonical: '/security' },
+  openGraph: { title: 'Meeti - Security', description: 'How Meeti protects your meetings and account.', url: '/security' },
+};
 
 export default function Security() {
   return (
@@ -15,6 +23,10 @@ export default function Security() {
       </header>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <h1 className="text-3xl font-bold mb-6">Security</h1>
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          DRAFT — This page has not yet been reviewed by a qualified lawyer and items
+          marked [SET] still need to be confirmed. Do not publish until reviewed.
+        </div>
         <div className="space-y-6 leading-relaxed text-gray-800">
           <p>
             We protect your meetings with industry-standard measures across transport,
@@ -22,15 +34,15 @@ export default function Security() {
           </p>
           <ul className="list-disc pl-6 space-y-2">
             <li><strong>Encryption in transit:</strong> all traffic between your device and our servers uses HTTPS/TLS (certificates issued by Let&apos;s Encrypt).</li>
-            <li><strong>Encryption at rest:</strong> recordings and the database are stored on Amazon Web Services with provider-managed encryption and access controls.</li>
+            <li><strong>Storage:</strong> your recordings and database are hosted on Amazon Web Services (EC2) with account-level access controls. <em>Encryption of data at rest is not yet enabled</em> &mdash; we state this honestly rather than claim a protection we have not implemented.</li>
             <li><strong>Passwords:</strong> hashed with bcrypt; we never store plaintext passwords.</li>
-            <li><strong>Session security:</strong> access uses short-lived signed tokens (JWT, 7-day expiry) rather than exposing your credentials.</li>
+            <li><strong>Session security:</strong> access uses signed tokens (JWT) with a 7-day expiry rather than exposing your credentials. We plan to move to short-lived access tokens with refresh-token rotation and revocation; until then we do not describe the current 7-day token as &quot;short-lived&quot;.</li>
             <li><strong>Least-privilege AI processing:</strong> audio and text are sent to OpenAI only to transcribe and summarise, and are not used to train models.</li>
             <li><strong>Access controls:</strong> your meetings are scoped to your account; you can delete any meeting at any time.</li>
           </ul>
           <p>
             No system is perfectly secure. To report a security issue, email{' '}
-            <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">[SET: security email]</mark>.
+            <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">[SET: security email (not yet created/verified)]</mark>.
           </p>
         </div>
       </main>

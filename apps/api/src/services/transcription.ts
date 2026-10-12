@@ -14,7 +14,7 @@ export interface TranscriptionResult {
 }
 
 export interface SpeechTranscriber {
-  transcribe(audioPath: string, meetingTitle?: string): Promise<TranscriptionResult>;
+  transcribe(audioPath: string, language?: string): Promise<TranscriptionResult>;
 }
 
 export interface LanguageDetector {
@@ -32,7 +32,7 @@ export class TranscriptionService implements ITranscriptionService {
     }
   }
 
-  async transcribe(audioPath: string, meetingTitle?: string): Promise<TranscriptionResult> {
+  async transcribe(audioPath: string, language?: string): Promise<TranscriptionResult> {
     if (!this.openai) {
       throw new Error(
         'Speech-to-text is not configured. Set OPENAI_API_KEY to enable transcription.',
@@ -45,9 +45,12 @@ export class TranscriptionService implements ITranscriptionService {
     const fileStream = fs.createReadStream(audioPath);
     const file = await this.openai.audio.transcriptions.create({
       file: fileStream as any,
-      model: 'whisper-1',
+      model: config.ai.transcriptionModel,
       response_format: 'verbose_json',
       timestamp_granularities: ['segment'],
+      // Only force a language when the user explicitly chose one; otherwise
+      // fall back to the provider's automatic detection.
+      ...(language && language !== 'auto' ? { language } : {}),
     });
 
     const segments = (file as any).segments?.length

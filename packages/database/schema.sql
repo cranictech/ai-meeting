@@ -71,6 +71,7 @@ CREATE TABLE meetings (
   status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'recording', 'processing', 'completed', 'failed', 'archived')),
   recording_quality VARCHAR(20) DEFAULT 'standard',
   detected_languages TEXT[],
+  source_language VARCHAR(10),
   output_language VARCHAR(10) DEFAULT 'en',
   duration_seconds INTEGER,
   started_at TIMESTAMPTZ,

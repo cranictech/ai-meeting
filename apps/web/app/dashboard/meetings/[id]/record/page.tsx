@@ -4,6 +4,23 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { meetingsApi } from '@/lib/api';
 
+// Spoken-language options for transcription. "beta" marks languages our
+// speech-to-text provider does not officially support, and "whisperCode" is
+// only set for languages the provider reliably handles; beta languages fall
+// back to automatic detection rather than forcing an unsupported code.
+type LangOption = { code: string; label: string; beta?: boolean; whisperCode?: string };
+const LANGUAGE_OPTIONS: LangOption[] = [
+  { code: 'auto', label: 'Auto-detect (default)' },
+  { code: 'en', label: 'English', whisperCode: 'english' },
+  { code: 'sw', label: 'Swahili', whisperCode: 'swahili' },
+  { code: 'lg', label: 'Luganda', beta: true },
+  { code: 'nyn', label: 'Runyankole', beta: true },
+  { code: 'cgg', label: 'Rukiga', beta: true },
+  { code: 'teo', label: 'Ateso', beta: true },
+  { code: 'luo', label: 'Luo', beta: true },
+  { code: 'ach', label: 'Acholi', beta: true },
+];
+
 export default function RecordMeetingPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [meetingTitle, setMeetingTitle] = useState('');
@@ -14,6 +31,8 @@ export default function RecordMeetingPage({ params }: { params: { id: string } }
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [sourceLanguage, setSourceLanguage] = useState('auto');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -165,6 +184,11 @@ export default function RecordMeetingPage({ params }: { params: { id: string } }
       formData.append('audio', blob, 'meeting-audio.webm');
       formData.append('chunkIndex', '0');
 
+      // Send the Whisper-supported code for the chosen language; beta/auto
+      // languages fall back to 'auto' so we never force an unsupported code.
+      const chosen = LANGUAGE_OPTIONS.find((o) => o.code === sourceLanguage);
+      formData.append('language', chosen?.whisperCode || 'auto');
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : '';
 
@@ -177,14 +201,19 @@ export default function RecordMeetingPage({ params }: { params: { id: string } }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to upload recording audio file');
+        let detail = '';
+        try {
+          const body = await response.json();
+          detail = body?.error || body?.message || '';
+        } catch (_) {}
+        throw new Error(detail || `Upload failed (HTTP ${response.status})`);
       }
 
       await meetingsApi.stop(params.id);
       router.push(`/dashboard/meetings/${params.id}/processing`);
-    } catch (err) {
+    } catch (err: any) {
       setUploading(false);
-      setError('Recording upload failed. Please try saving again.');
+      setError(`Recording upload failed: ${err?.message || 'unknown error'}. Please try saving again.`);
       console.error('Upload error:', err);
     }
   };
@@ -267,12 +296,64 @@ export default function RecordMeetingPage({ params }: { params: { id: string } }
           )}
 
           {!recording && !uploading && (
-            <button
-              onClick={startRecording}
-              className="w-full bg-red-600 text-white py-4 rounded-xl hover:bg-red-700 transition font-semibold text-lg shadow-sm"
-            >
-              Start Recording
-            </button>
+            <div className="space-y-6 text-left">
+              <div>
+                <label htmlFor="sourceLanguage" className="block text-sm font-medium text-gray-700 mb-2">
+                  Spoken language
+                </label>
+                <select
+                  id="sourceLanguage"
+                  value={sourceLanguage}
+                  onChange={(e) => setSourceLanguage(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {LANGUAGE_OPTIONS.map((o) => (
+                    <option key={o.code} value={o.code}>
+                      {o.label}
+                      {o.beta ? ' \u2014 Beta' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-gray-500">
+                  Choosing a language beats auto-detection. If you are unsure, leave it on Auto-detect.
+                </p>
+              </div>
+
+              {LANGUAGE_OPTIONS.find((o) => o.code === sourceLanguage)?.beta && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <strong>Beta language.</strong> Our speech-to-text provider does not officially
+                  support this language, so accuracy may be poor and it will fall back to automatic
+                  detection. Always review the transcript before relying on it.
+                </div>
+              )}
+
+              <label className="flex items-start gap-3 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={consentGiven}
+                  onChange={(e) => setConsentGiven(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                />
+                <span>
+                  I confirm I have the legal right and the participants&apos; consent to record this
+                  meeting. Recording people without consent may be unlawful where you live.
+                </span>
+              </label>
+
+              <button
+                onClick={startRecording}
+                disabled={!consentGiven}
+                className="w-full bg-red-600 text-white py-4 rounded-xl hover:bg-red-700 transition font-semibold text-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Start Recording
+              </button>
+
+              {!consentGiven && (
+                <p className="text-xs text-gray-500 text-center">
+                  Tick the consent box above to enable recording.
+                </p>
+              )}
+            </div>
           )}
 
           {recording && !uploading && (

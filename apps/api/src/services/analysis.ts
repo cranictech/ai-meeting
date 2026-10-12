@@ -43,8 +43,7 @@ export class AnalysisService implements IAnalysisService {
 
   async analyzeMeeting(transcript: string, meetingType?: string, meetingTitle?: string): Promise<MeetingAnalysis> {
     if (this.openai && transcript.trim().length > 0) {
-      try {
-        const prompt = `Analyze this meeting transcript and extract:
+      const prompt = `Analyze this meeting transcript and extract:
 1. A concise summary (2-3 sentences)
 2. An executive summary (1 sentence)
 3. Key topics discussed
@@ -75,25 +74,30 @@ Respond in JSON format:
   "keyPoints": ["..."]
 }`;
 
-        const response = await this.openai.chat.completions.create({
-          model: 'gpt-4-turbo-preview',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an assistant that analyzes meeting transcripts. Extract only factual information from the transcript. Never hallucinate or invent details.',
-            },
-            { role: 'user', content: prompt },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.3,
-        });
+      // Try the configured primary model, then the fallback. Every failure is
+      // logged with an [AI-ALERT] tag so it can be routed to monitoring.
+      for (const model of [config.ai.analysisModel, config.ai.analysisFallbackModel]) {
+        try {
+          const response = await this.openai.chat.completions.create({
+            model,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an assistant that analyzes meeting transcripts. Extract only factual information from the transcript. Never hallucinate or invent details.',
+              },
+              { role: 'user', content: prompt },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
 
-        const content = response.choices[0].message.content;
-        if (content) {
-          return JSON.parse(content);
+          const content = response.choices[0].message.content;
+          if (content) {
+            return JSON.parse(content);
+          }
+        } catch (err) {
+          console.error(`[AI-ALERT] analysis model "${model}" failed:`, err);
         }
-      } catch (err) {
-        console.warn('Analysis provider unavailable, using local analyzer:', err);
       }
     }
 
@@ -189,22 +193,24 @@ Respond in JSON format:
 
   async translate(text: string, targetLanguage: string): Promise<string> {
     if (this.openai) {
-      try {
-        const response = await this.openai.chat.completions.create({
-          model: 'gpt-4-turbo-preview',
-          messages: [
-            {
-              role: 'system',
-              content: `Translate the following text to ${targetLanguage}. Maintain the meaning and tone.`,
-            },
-            { role: 'user', content: text },
-          ],
-          temperature: 0.3,
-        });
+      for (const model of [config.ai.analysisModel, config.ai.analysisFallbackModel]) {
+        try {
+          const response = await this.openai.chat.completions.create({
+            model,
+            messages: [
+              {
+                role: 'system',
+                content: `Translate the following text to ${targetLanguage}. Maintain the meaning and tone.`,
+              },
+              { role: 'user', content: text },
+            ],
+            temperature: 0.3,
+          });
 
-        return response.choices[0].message.content || text;
-      } catch (err) {
-        console.warn('Translation request failed, returning original text:', err);
+          return response.choices[0].message.content || text;
+        } catch (err) {
+          console.error(`[AI-ALERT] translation model "${model}" failed:`, err);
+        }
       }
     }
     return text;

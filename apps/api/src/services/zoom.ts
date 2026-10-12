@@ -103,7 +103,11 @@ export class ZoomService implements IZoomService {
   }
 
   getAuthUrl(redirectUri: string): string {
-    const clientId = process.env.ZOOM_CLIENT_ID || 'ZOOM_MOCK_CLIENT_ID';
+    // No real Zoom app credentials configured -> we cannot start OAuth. Return
+    // an empty URL rather than a fake/mock link so the client shows an honest
+    // "not configured" message instead of a bogus connection.
+    const clientId = process.env.ZOOM_CLIENT_ID;
+    if (!clientId) return '';
     return `https://zoom.us/oauth/authorize?response_type=code&client_id=${encodeURIComponent(
       clientId
     )}&redirect_uri=${encodeURIComponent(redirectUri)}`;
@@ -114,14 +118,7 @@ export class ZoomService implements IZoomService {
     const clientSecret = process.env.ZOOM_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      // Mock mode for local development/testing
-      return {
-        access_token: `zoom_mock_token_${Date.now()}`,
-        refresh_token: `zoom_mock_refresh_${Date.now()}`,
-        expires_in: 3600,
-        user_id: 'zoom_user_mock',
-        email: 'user@zoom-workspace.com',
-      };
+      throw new Error('Zoom integration is not configured on this server.');
     }
 
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -148,34 +145,6 @@ export class ZoomService implements IZoomService {
     const integration = await this.getIntegration(userId);
     if (!integration || !integration.access_token) {
       return [];
-    }
-
-    // If using mock token or credentials aren't live yet
-    if (integration.access_token.startsWith('zoom_mock_token_')) {
-      return [
-        {
-          id: 'zoom_rec_001',
-          uuid: 'uuid-rec-001',
-          topic: 'Product Roadmap Sync',
-          start_time: new Date(Date.now() - 3600000 * 24).toISOString(),
-          duration: 45,
-          total_size: 45000000,
-          recording_count: 1,
-          download_url: 'https://example.com/recording1.m4a',
-          file_type: 'm4a',
-        },
-        {
-          id: 'zoom_rec_002',
-          uuid: 'uuid-rec-002',
-          topic: 'Weekly Leadership Standup',
-          start_time: new Date(Date.now() - 3600000 * 48).toISOString(),
-          duration: 32,
-          total_size: 32000000,
-          recording_count: 1,
-          download_url: 'https://example.com/recording2.m4a',
-          file_type: 'm4a',
-        },
-      ];
     }
 
     try {

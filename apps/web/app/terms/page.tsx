@@ -1,4 +1,12 @@
 import LegalLayout from '../../components/LegalLayout';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description: 'The terms that govern your use of Meeti.',
+  alternates: { canonical: '/terms' },
+  openGraph: { title: 'Meeti - Terms of Service', description: 'The terms that govern your use of Meeti.', url: '/terms' },
+};
 
 const Fill = ({ children }: { children: React.ReactNode }) => (
   <mark className="bg-yellow-100 text-yellow-900 px-1 rounded">
@@ -8,7 +16,11 @@ const Fill = ({ children }: { children: React.ReactNode }) => (
 
 export default function Terms() {
   return (
-    <LegalLayout title="Terms of Service" updated="11 October 2026">
+    <LegalLayout
+      title="Terms of Service"
+      updated="11 October 2026"
+      notice="DRAFT — These Terms have not yet been reviewed by a qualified lawyer and items marked [SET] still need to be confirmed. Do not publish until reviewed."
+    >
       <p>
         These Terms govern your use of Meeti (web, iPhone and Android). By creating an
         account or using the service you agree to these Terms, our{' '}
@@ -18,22 +30,26 @@ export default function Terms() {
 
       <h2 className="text-xl font-semibold pt-4">1. Who we are</h2>
       <p>
-        Meeti is operated by <Fill>legal entity name</Fill> (<Fill>registration
-        number</Fill>, <Fill>registered address</Fill>). Contact: <Fill>support email</Fill>.
+        Meeti is operated by <strong>Cranictech</strong>, of Nasser Road, Printer&apos;s
+        Miracle Centre, Uganda. Company registration number:{' '}
+        <Fill>company registration number</Fill>. Contact:{' '}
+        <Fill>support email (not yet created/verified)</Fill>.
       </p>
 
       <h2 className="text-xl font-semibold pt-4">2. Eligibility and accounts</h2>
       <ul className="list-disc pl-6 space-y-1">
-        <li>You must be at least <Fill>18 / local age of majority</Fill> and able to form a binding contract.</li>
+        <li>You must be at least <strong>18</strong> years old (proposed minimum, pending review and implementation) and able to form a binding contract.</li>
         <li>Provide accurate information and keep your credentials secure; you are responsible for activity under your account.</li>
-        <li>Report unauthorised access to <Fill>support email</Fill>.</li>
+        <li>Report unauthorised access to <Fill>support email (not yet created/verified)</Fill>.</li>
         <li>If you use Meeti for an organisation, you confirm you are authorised to bind it.</li>
       </ul>
 
       <h2 className="text-xl font-semibold pt-4">3. The service and plans</h2>
       <p>
         Meeti provides meeting recording, transcription, AI summaries, task tracking,
-        reminders and exports. Features and limits may change. Current plans:
+        reminders and exports. Features and limits may change. The Free plan is currently
+        the only plan you can use; Pro and Business are planned tiers with indicative
+        pricing that is not yet purchasable:
       </p>
       <ul className="list-disc pl-6 space-y-1">
         <li><strong>Free</strong> &mdash; 60 transcription minutes/month, 1&nbsp;GB storage, 10 meetings, 5 exports, PDF export.</li>
@@ -41,8 +57,9 @@ export default function Terms() {
         <li><strong>Business</strong> &mdash; $29.99/month or $299.99/year; 2000 minutes/month, 100&nbsp;GB, 1000 meetings, 500 exports, team collaboration (up to 50 members), API access.</li>
       </ul>
       <p>
-        <Fill>Confirm prices/currency and whether paid billing is live yet; if only the
-        Free plan is enabled, say so</Fill>.
+        <strong>Paid plans are not yet available.</strong> Checkout is not implemented and
+        we do not currently process any payment. The Pro and Business figures above are
+        indicative only and are not offered for purchase at this time.
       </p>
 
       <h2 className="text-xl font-semibold pt-4">4. Your content</h2>
@@ -68,10 +85,13 @@ export default function Terms() {
         reviewing it and for any decision you make using it.
       </p>
 
-      <h2 className="text-xl font-semibold pt-4">7. Fees, renewal and refunds</h2>
+      <h2 className="text-xl font-semibold pt-4">7. Fees and payment</h2>
       <p>
-        <Fill>billing cycle, auto-renewal, cancellation, refund policy, taxes</Fill>.
-        You may cancel per the terms shown at checkout.
+        Meeti is currently free to use. We do not charge fees, take payment, or operate a
+        checkout at this time, so there are no subscriptions, renewals, cancellations or
+        refunds to describe. If we introduce paid plans in the future, the applicable
+        prices, billing cycle and refund terms will be shown at checkout and reflected in
+        an updated version of these Terms before any payment is taken.
       </p>
 
       <h2 className="text-xl font-semibold pt-4">8. Retention and deletion</h2>
@@ -113,26 +133,34 @@ export default function Terms() {
       <p>
         To the extent permitted by law, we are not liable for indirect or consequential
         loss, lost profits, or loss arising from reliance on AI output. Our total
-        liability is limited to <Fill>e.g. fees paid in the previous 12 months</Fill>.
+        liability is limited to{' '}
+        <Fill>a cap to be confirmed with a lawyer (e.g. a fixed sum, or any amount you
+        have paid &mdash; noting the service is currently free)</Fill>.
         Nothing limits liability that cannot be limited by law.
       </p>
 
       <h2 className="text-xl font-semibold pt-4">14. Governing law and disputes</h2>
       <p>
-        These Terms are governed by the laws of <Fill>jurisdiction</Fill>; the courts of{' '}
-        <Fill>jurisdiction</Fill> have <Fill>exclusive / non-exclusive</Fill> jurisdiction.{' '}
-        <Fill>any arbitration clause</Fill>.
+        These Terms are governed by the laws of <strong>Uganda</strong>, and the courts of
+        Uganda have jurisdiction over any dispute.{' '}
+        <Fill>This clause is proposed and subject to review by a qualified lawyer &mdash;
+        it has NOT been legally approved, and whether an arbitration clause is required or
+        permitted still needs to be confirmed.</Fill>
       </p>
 
       <h2 className="text-xl font-semibold pt-4">15. Changes to these Terms</h2>
       <p>
         We may update these Terms and will give notice of material changes by{' '}
-        <Fill>email / in-app</Fill>. Continued use after the effective date means
-        acceptance.
+        <Fill>email (once a contact address is live) and/or in-app</Fill>. Continued use
+        after the effective date means acceptance.
       </p>
 
       <h2 className="text-xl font-semibold pt-4">16. Contact</h2>
-      <p><Fill>company name, address, support email</Fill>.</p>
+      <p>
+        Meeti is operated by Cranictech, Nasser Road, Printer&apos;s Miracle Centre,
+        Uganda. Company registration number: <Fill>company registration number</Fill>.
+        Contact: <Fill>support email (not yet created/verified)</Fill>.
+      </p>
     </LegalLayout>
   );
 }

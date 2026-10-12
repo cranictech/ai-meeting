@@ -155,8 +155,12 @@ export default function MeetingDetailScreen() {
       });
       setTranslatedData(res.data);
       setShowTranslationModal(false);
-    } catch (err) {
-      Alert.alert('Error', 'Translation failed. Please verify translation service configuration.');
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+      Alert.alert(
+        'Translation failed',
+        serverMsg || 'The AI service is unavailable right now. It may be out of credit or misconfigured.'
+      );
     } finally {
       setTranslating(false);
     }
