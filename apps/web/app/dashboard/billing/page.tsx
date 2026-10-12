@@ -2,35 +2,72 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { billingApi } from '@/lib/api';
+import { billingApi, authApi, type UsageSummary } from '@/lib/api';
+import { AppShell } from '@/components/AppShell';
+import { Card, PageHeader, Badge } from '@/components/ui';
+
+interface Plan {
+  id: string;
+  name: string;
+  slug: string;
+  price_monthly: number;
+  price_annual: number;
+  features: string[];
+}
+
+function AllowanceBar({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const remaining = Math.max(0, Math.round((limit - used) * 100) / 100);
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-sm">
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="text-muted-foreground">
+          {used} / {limit} · {remaining} left
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full ${pct >= 100 ? 'bg-destructive' : pct >= 80 ? 'bg-amber-500' : 'bg-primary'}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function BillingPage() {
   const router = useRouter();
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
+  const [summary, setSummary] = useState<UsageSummary | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
+  const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
       router.push('/login');
       return;
     }
-
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
     try {
-      const [plansRes, subRes] = await Promise.all([
+      const [plansRes, subRes, summaryRes, profileRes] = await Promise.all([
         billingApi.getPlans(),
         billingApi.getSubscription().catch(() => null),
+        billingApi.getUsageSummary().catch(() => null),
+        authApi.getProfile().catch(() => null),
       ]);
       setPlans(plansRes.data || []);
       setSubscription(subRes?.data || null);
+      setSummary(summaryRes?.data || null);
+      setProfile(profileRes?.data ?? null);
     } catch (err) {
       console.error('Failed to load billing data:', err);
     } finally {
@@ -38,136 +75,177 @@ export default function BillingPage() {
     }
   };
 
-  const handleSubscribe = async (planId: string) => {
+  // Upgrade does not self-activate; the server enforces payment.
+  const handleUpgrade = async (plan: Plan) => {
+    setBusyPlan(plan.id);
+    setMessage(null);
     try {
-      await billingApi.createSubscription({ planId });
-      await loadData();
+      await billingApi.startCheckout(plan.id);
+      // Would redirect if a payment provider were configured.
+      setMessage({ tone: 'info', text: 'Redirecting to secure checkout…' });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to subscribe. This will require Stripe integration.');
+      const text =
+        err?.response?.data?.error ||
+        'Online payments are not enabled on this server yet, so paid plans cannot be activated. Your free manual notes remain fully available.';
+      setMessage({ tone: 'error', text });
+    } finally {
+      setBusyPlan(null);
     }
   };
 
   const handleCancel = async () => {
     if (!confirm('Are you sure you want to cancel your subscription?')) return;
-
-    setCancelling(true);
+    setBusyPlan('cancel');
     try {
       await billingApi.cancelSubscription();
       await loadData();
+      setMessage({ tone: 'info', text: 'Subscription cancelled. You keep access until the end of the period.' });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to cancel subscription');
+      setMessage({ tone: 'error', text: err?.response?.data?.error || 'Failed to cancel subscription' });
     } finally {
-      setCancelling(false);
+      setBusyPlan(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600 font-medium">Loading billing information...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-sm font-medium text-muted-foreground">Loading billing information…</div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link href="/dashboard" className="text-gray-700 hover:text-gray-900 font-medium text-sm">
-              Back to Dashboard
-            </Link>
-            <h1 className="text-xl font-semibold">Billing & Plans</h1>
-            <div className="w-32" />
-          </div>
-        </div>
-      </nav>
+  const isPaid = subscription?.status === 'active' && subscription?.source === 'subscription';
+  const currentSlug = summary?.plan.slug || subscription?.plan_slug || 'free';
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Current Subscription */}
-        {subscription && (
-          <div className="bg-white border rounded-xl p-6 mb-8">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Current Plan</h2>
-                <p className="text-gray-600 mt-1">{subscription.plan_name}</p>
-              </div>
-              <span className="bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
-                Active
-              </span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <p className="text-sm text-gray-500">Billing Period</p>
-                <p className="font-medium text-gray-900">
-                  {new Date(subscription.current_period_start).toLocaleDateString()} - {new Date(subscription.current_period_end).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Price</p>
-                <p className="font-medium text-gray-900">${subscription.plan_id === 'pro' ? '$9.99' : subscription.plan_id === 'business' ? '$29.99' : '$0'}/month</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Provider</p>
-                <p className="font-medium text-gray-900">{subscription.provider || 'None'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Status</p>
-                <p className="font-medium text-gray-900 capitalize">{subscription.status}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleCancel}
-              disabled={cancelling}
-              className="border border-red-300 text-red-700 px-4 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 font-medium"
-            >
-              {cancelling ? 'Cancelling...' : 'Cancel Subscription'}
-            </button>
+  return (
+    <AppShell userName={profile?.profile?.full_name} userEmail={profile?.user?.email}>
+      <div className="space-y-8">
+        <PageHeader
+          title="Billing & Plans"
+          subtitle="Your plan, usage this month, and what upgrades include."
+        />
+
+        {message && (
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm ${
+              message.tone === 'error'
+                ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                : 'border-border bg-muted text-foreground'
+            }`}
+          >
+            {message.text}
           </div>
         )}
 
-        {/* Available Plans */}
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Choose Your Plan</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`bg-white border rounded-xl p-6 ${
-                subscription?.plan_id === plan.slug ? 'ring-2 ring-blue-500' : ''
-              }`}
-            >
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-              <div className="mb-4">
-                <span className="text-3xl font-bold text-gray-900">
-                  ${plan.price_monthly === 0 ? 'Free' : `$${plan.price_monthly}`}
-                </span>
-                {plan.price_monthly > 0 && (
-                  <span className="text-gray-600">/month</span>
-                )}
-              </div>
-              <ul className="space-y-2 mb-6">
-                {plan.features.map((feature: string, index: number) => (
-                  <li key={index} className="flex items-start text-sm text-gray-700">
-                    <span className="text-green-500 mr-2">v</span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+        {/* Current plan + usage */}
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Current plan</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {summary?.plan.name || 'Free'}
+                {summary ? ` · $${summary.plan.priceMonthly}/month` : ''}
+              </p>
+            </div>
+            <Badge tone={isPaid ? 'success' : 'muted'}>{isPaid ? 'Paid' : 'Free'}</Badge>
+          </div>
+
+          {summary ? (
+            <div className="space-y-4">
+              <AllowanceBar
+                label="AI transcription minutes (this month)"
+                used={summary.transcriptionMinutes.used}
+                limit={summary.transcriptionMinutes.limit}
+              />
+              <AllowanceBar
+                label="Exports (this month)"
+                used={summary.exports.used}
+                limit={summary.exports.limit}
+              />
+              <p className="text-xs text-muted-foreground">
+                Manual notes and template formatting are always free and unlimited — they don't use
+                the AI allowance above. AI features work only when the transcription service is
+                configured and has credit.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Usage summary unavailable.</p>
+          )}
+
+          {isPaid && (
+            <div className="mt-4">
               <button
-                onClick={() => handleSubscribe(plan.id)}
-                disabled={subscription?.plan_id === plan.slug}
-                className={`w-full py-2 rounded-lg font-medium ${
-                  subscription?.plan_id === plan.slug
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                onClick={handleCancel}
+                disabled={busyPlan === 'cancel'}
+                className="rounded-lg border border-destructive/40 px-4 py-2 text-sm font-medium text-destructive transition hover:bg-destructive/10 disabled:opacity-50"
               >
-                {subscription?.plan_id === plan.slug ? 'Current Plan' : 'Subscribe'}
+                {busyPlan === 'cancel' ? 'Cancelling…' : 'Cancel subscription'}
               </button>
             </div>
-          ))}
+          )}
+        </Card>
+
+        {/* Plans */}
+        <div>
+          <h2 className="mb-4 text-xl font-bold text-foreground">Choose a plan</h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            {plans.map((plan) => {
+              const isCurrent = plan.slug === currentSlug;
+              const isFree = Number(plan.price_monthly) === 0;
+              return (
+                <Card
+                  key={plan.id}
+                  className={`flex flex-col p-6 ${isCurrent ? 'ring-2 ring-primary' : ''}`}
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
+                    {isCurrent && <Badge tone="primary">Current</Badge>}
+                  </div>
+                  <div className="mb-4">
+                    <span className="text-3xl font-bold text-foreground">
+                      {isFree ? 'Free' : `$${plan.price_monthly}`}
+                    </span>
+                    {!isFree && <span className="text-muted-foreground">/month</span>}
+                  </div>
+                  <ul className="mb-6 flex-1 space-y-2">
+                    {(plan.features || []).map((f, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-0.5 text-success">✓</span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => handleUpgrade(plan)}
+                    disabled={isCurrent || busyPlan === plan.id}
+                    className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                      isCurrent
+                        ? 'cursor-not-allowed bg-muted text-muted-foreground'
+                        : isFree
+                          ? 'border border-border text-foreground hover:bg-muted'
+                          : 'bg-primary text-primary-foreground hover:opacity-90'
+                    }`}
+                  >
+                    {isCurrent
+                      ? 'Current plan'
+                      : busyPlan === plan.id
+                        ? 'Checking…'
+                        : isFree
+                          ? 'Stay on Free'
+                          : 'Upgrade'}
+                  </button>
+                </Card>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Upgrading requires a completed payment. Secure checkout is not enabled on this server
+            yet, so paid plans cannot be activated — no payment details are collected here, and
+            nothing is charged automatically.
+          </p>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

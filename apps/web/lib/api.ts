@@ -269,6 +269,20 @@ export const organizationsApi = {
     api.delete<any>(`/organizations/${id}`),
 };
 
+export interface UsageSummary {
+  plan: { slug: string; name: string; priceMonthly: number; source: string };
+  limits: {
+    transcriptionMinutes: number;
+    exports: number;
+    meetings: number;
+    storageGB: number;
+    manualNotes: string;
+    templates: string;
+  };
+  transcriptionMinutes: { limit: number; used: number; remaining: number };
+  exports: { limit: number; used: number; remaining: number };
+}
+
 export const billingApi = {
   getPlans: () =>
     api.get<any[]>('/billing/plans'),
@@ -276,17 +290,103 @@ export const billingApi = {
   getSubscription: () =>
     api.get<any>('/billing/subscription'),
 
-  createSubscription: (data: { planId: string; provider?: string; providerSubscriptionId?: string }) =>
-    api.post<any>('/billing/subscription', data),
+  // Remaining allowance, computed server-side.
+  getUsageSummary: () =>
+    api.get<UsageSummary>('/billing/usage-summary'),
+
+  // Upgrade entrypoint; returns 501 until payments are configured.
+  startCheckout: (planId: string) =>
+    api.post<any>('/billing/checkout', { planId }),
 
   cancelSubscription: () =>
     api.post<any>('/billing/subscription/cancel'),
 
-  recordUsage: (data: { resourceType: string; amount: number; unit?: string; cost?: number; metadata?: any }) =>
-    api.post<any>('/billing/usage', data),
-
   getUsage: (params?: { startDate?: string; endDate?: string }) =>
     api.get<any[]>('/billing/usage', { params }),
+};
+
+export interface MeetingTemplate {
+  id: string;
+  name: string;
+  description: string;
+  tier: 'basic' | 'advanced';
+  agenda: string;
+  objectives: string;
+  content: string;
+}
+
+export interface ManualNote {
+  id: string;
+  title: string;
+  meeting_type?: string;
+  status: string;
+  content?: string | null;
+  agenda?: string | null;
+  objectives?: string | null;
+  meeting_date?: string | null;
+  created_at: string;
+  updated_at: string;
+  manual_summary?: { summary: string; executive_summary?: string; source?: string } | null;
+  participants?: Array<{ id: string; name: string; email?: string; role?: string }>;
+}
+
+export interface StructuredMinutes {
+  executiveSummary: string;
+  summary: string;
+  discussion: string[];
+  decisions: string[];
+  actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>;
+  risks: string[];
+  followUps: string[];
+  questions: string[];
+  markdown: string;
+}
+
+export const notesApi = {
+  templates: () => api.get<MeetingTemplate[]>('/notes/templates'),
+
+  list: () => api.get<ManualNote[]>('/notes'),
+
+  get: (id: string) => api.get<ManualNote>(`/notes/${id}`),
+
+  create: (data: {
+    title: string;
+    meetingType?: string;
+    outputLanguage?: string;
+    templateId?: string;
+    agenda?: string;
+    objectives?: string;
+    content?: string;
+    meetingDate?: string;
+    participants?: Array<{ name: string; email?: string }>;
+  }) => api.post<ManualNote>('/notes', data),
+
+  update: (id: string, data: Partial<{
+    title: string;
+    meetingType: string;
+    agenda: string | null;
+    objectives: string | null;
+    content: string | null;
+    meetingDate: string | null;
+  }>) => api.patch<ManualNote>(`/notes/${id}`, data),
+
+  remove: (id: string) => api.delete(`/notes/${id}`),
+
+  addParticipant: (id: string, data: { name: string; email?: string }) =>
+    api.post<{ id: string; name: string; email?: string }>(`/notes/${id}/participants`, data),
+
+  removeParticipant: (id: string, participantId: string) =>
+    api.delete(`/notes/${id}/participants/${participantId}`),
+
+  // Deterministic formatting (no model).
+  format: (id: string) =>
+    api.post<{ source: 'template'; structured: StructuredMinutes }>(`/notes/${id}/format`),
+
+  // Markdown download URL (fetch attaches the auth token).
+  exportMarkdownUrl: (id: string) => `${api.defaults.baseURL}/notes/${id}/export/markdown`,
+
+  downloadMarkdown: (id: string) =>
+    api.get<Blob>(`/notes/${id}/export/markdown`, { responseType: 'blob' }),
 };
 
 export const actionItemsApi = {

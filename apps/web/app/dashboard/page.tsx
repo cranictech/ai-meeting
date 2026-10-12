@@ -140,17 +140,29 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {userName}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Ready to record and analyze your next meeting?</p>
+            <p className="mt-1 text-sm text-muted-foreground">Write free notes or record a meeting to generate AI notes.</p>
           </div>
-          <Link
-            href="/dashboard/meetings/new"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-card transition hover:opacity-90"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Start New Meeting
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/dashboard/notes"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-card transition hover:border-primary/40"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6M9 13h6M9 17h4" />
+              </svg>
+              New Free Note
+            </Link>
+            <Link
+              href="/dashboard/meetings/new"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-card transition hover:opacity-90"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Start New Meeting
+            </Link>
+          </div>
         </div>
 
         {/* Quick actions */}

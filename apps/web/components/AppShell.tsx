@@ -8,6 +8,7 @@ import { ThemeToggle } from './theme';
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', exact: true },
   { href: '/dashboard/meetings', label: 'Meetings' },
+  { href: '/dashboard/notes', label: 'Notes' },
   { href: '/dashboard/tasks', label: 'Tasks' },
   { href: '/dashboard/search', label: 'Search' },
   { href: '/dashboard/organizations', label: 'Teams' },
