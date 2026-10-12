@@ -15,8 +15,8 @@
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
 
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 211 100% 44%;
+  --primary-foreground: 0 0% 100%;
 
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -35,7 +35,7 @@
 
   --border: 214 32% 91%;
   --input: 214 32% 91%;
-  --ring: 221 83% 53%;
+  --ring: 211 100% 44%;
 }
 
 .dark {
@@ -47,7 +47,7 @@
   --card: 223 22% 11%;
   --card-foreground: 210 40% 96%;
 
-  --primary: 217 91% 60%;
+  --primary: 200 100% 55%;
   --primary-foreground: 224 40% 8%;
 
   --secondary: 222 18% 16%;
@@ -67,7 +67,7 @@
 
   --border: 221 16% 20%;
   --input: 221 16% 22%;
-  --ring: 217 91% 60%;
+  --ring: 200 100% 55%;
 }
 
 * {
@@ -124,12 +124,12 @@ body,
 
 .dark .hover\:bg-gray-50:hover,
 .dark .hover\:bg-gray-100:hover { background-color: hsl(var(--muted)); }
-.dark .hover\:text-blue-600:hover { color: hsl(217 91% 70%); }
+.dark .hover\:text-blue-600:hover { color: hsl(200 100% 72%); }
 .dark .hover\:border-gray-300:hover { border-color: hsl(var(--border)); }
 
-/* Accent blue reads better slightly lighter on dark surfaces */
-.dark .text-blue-600 { color: hsl(217 91% 68%); }
-.dark .text-blue-500 { color: hsl(217 91% 72%); }
+/* Brand blue/cyan from the logo, tuned for dark surfaces */
+.dark .text-blue-600 { color: hsl(200 100% 66%); }
+.dark .text-blue-500 { color: hsl(195 100% 70%); }
 
 /* Status pills (bg-*-100 / text-*-700) tuned for dark */
 .dark .bg-green-100 { background-color: hsl(142 60% 45% / 0.16); }

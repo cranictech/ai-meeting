@@ -42,7 +42,7 @@ export default function Home() {
             <h1 className="mt-6 text-5xl font-bold tracking-tight md:text-6xl">
               Turn every meeting into
               <br />
-              <span className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">clear, actionable notes</span>
+              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">clear, actionable notes</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-xl text-muted-foreground">
               Record meetings in multiple languages, get AI-powered transcripts,
@@ -86,7 +86,7 @@ export default function Home() {
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-500">
                 <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
               </div>
               <h3 className="mb-2 text-xl font-semibold">Act</h3>
@@ -97,7 +97,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-32 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-12 text-center text-white shadow-glow">
+          <div className="mt-32 rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-600 p-12 text-center text-white shadow-glow">
             <h2 className="mb-4 text-3xl font-bold">Built for Uganda and East Africa</h2>
             <p className="mx-auto mb-8 max-w-2xl text-xl opacity-90">
               Designed for the way people meet in Uganda and across East Africa, with

@@ -91,7 +91,7 @@ export function QuickAction({
   tone?: 'primary' | 'orange' | 'green' | 'purple' | 'muted';
 }) {
   const tones: Record<string, string> = {
-    primary: 'from-blue-500 to-indigo-600',
+    primary: 'from-blue-500 to-cyan-500',
     orange: 'from-orange-400 to-amber-500',
     green: 'from-emerald-400 to-green-600',
     purple: 'from-violet-500 to-purple-600',
